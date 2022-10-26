@@ -52,7 +52,7 @@ var CommandHandlers = map[string]func(s *discordgo.Session, i *discordgo.Interac
 	},
 	"randomquote": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		doc := utils.GetRandomQuote()
-		quoteTime := doc.CreatedAt.Local().String()
+		quoteTime := doc.CreatedAt.Local().Format(time.RFC822)
 
 		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
@@ -74,7 +74,7 @@ var CommandHandlers = map[string]func(s *discordgo.Session, i *discordgo.Interac
 	},
 	"latestquote": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		doc := utils.GetLatestQuote()
-		quoteTime := doc.CreatedAt.Local().String()
+		quoteTime := doc.CreatedAt.Local().Format(time.RFC822)
 
 		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
