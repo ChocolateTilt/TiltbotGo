@@ -1,0 +1,52 @@
+# syntax=docker/dockerfile:1
+
+################################
+# STEP 1 build executable binary
+################################
+
+FROM golang:alpine as build
+
+WORKDIR /root
+
+RUN apk add tzdata
+
+# Create appuser.
+ENV USER=appuser
+ENV UID=10001 
+RUN adduser \    
+    --disabled-password \    
+    --gecos "" \    
+    --home "/nonexistent" \    
+    --shell "/sbin/nologin" \    
+    --no-create-home \    
+    --uid "${UID}" \    
+    "${USER}"
+
+COPY . .
+RUN go mod download 
+RUN GOOS=linux GOARCH=arm go build -o ./app/bot .
+
+############################
+# STEP 2 build final image
+############################
+
+FROM arm32v7/alpine:latest
+
+ENV TZ=America/Detroit
+
+WORKDIR /home/app
+
+# Copy the user and group from build
+COPY --from=build /etc/passwd /etc/passwd
+COPY --from=build /etc/group /etc/group
+
+# Copy Timezone information
+COPY --from=build /usr/share/zoneinfo /usr/share/zoneinfo
+
+# Copy the binary
+COPY --from=build /root/app .
+
+# Use unprivledged user
+USER appuser:appuser
+
+CMD [ "./bot" ]
