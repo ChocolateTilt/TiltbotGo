@@ -47,10 +47,9 @@ var (
 // Register commands to Discord in an overwrite fashion. For global commands, do not pass a guild flag.
 func SetCommands() {
 	log.Println("Adding commands...")
-	_, err := utils.Session.ApplicationCommandBulkOverwrite(utils.Session.State.User.ID, utils.ReadConfig().GuildID, Commands)
+	_, err := utils.Session.ApplicationCommandBulkOverwrite(utils.Session.State.User.ID, utils.Conf.GuildID, Commands)
 	if err != nil {
 		log.Panicf("Error in command creation: %v\n", err)
-	} else {
-		fmt.Println("All commands successfully registered (overwrite).")
 	}
+	fmt.Println("All commands successfully registered (overwrite).")
 }

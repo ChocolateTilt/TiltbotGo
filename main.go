@@ -13,7 +13,7 @@ import (
 
 func init() {
 	var err error
-	utils.Session, err = discordgo.New("Bot " + utils.ReadConfig().Token)
+	utils.Session, err = discordgo.New("Bot " + utils.Conf.Token)
 	if err != nil {
 		log.Fatalf("Invalid bot params: %v", err)
 	}

@@ -16,6 +16,7 @@ type Config struct {
 }
 
 var Session *discordgo.Session
+var Conf = ReadConfig()
 
 func ReadConfig() Config {
 	var config Config
