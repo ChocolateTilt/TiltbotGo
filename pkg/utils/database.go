@@ -24,19 +24,21 @@ type Quote struct {
 
 var collection *mongo.Collection
 var ctx = context.TODO()
+var filter = bson.D{}
+var quote Quote
 
 // Open a connection to MongoDB
 func ConnectMongo() {
-	clientOptions := options.Client().ApplyURI(ReadConfig().MongoURI)
+	clientOptions := options.Client().ApplyURI(Conf.MongoURI)
 	client, err := mongo.Connect(ctx, clientOptions)
 	if err != nil {
 		log.Fatal(fmt.Printf("Problem while connecting to the collection: %v", err))
 	}
 
-	collection = client.Database("TiltBot").Collection(ReadConfig().Collection)
+	collection = client.Database("TiltBot").Collection(Conf.Collection)
 }
 
-func CreateQuote(quote *Quote) error {
+func CreateQuote(quote Quote) error {
 	_, insertErr := collection.InsertOne(ctx, quote)
 	if insertErr != nil {
 		log.Printf("Problem whilte creating a quote in the collection: %v", insertErr)
@@ -51,38 +53,34 @@ func QuoteCount() int {
 }
 
 // Gets a random quote document from the collection and unmarshals the BSON to the Quote struct
-func GetRandomQuote() *Quote {
-	// Get random document from collection
+func GetRandomQuote() Quote {
 	dbCount := QuoteCount()
 	max := dbCount
 	min := 1
 	rand.Seed(time.Now().UnixNano())
 	randomSkip := rand.Intn(max - min + 1)
 	opts := options.FindOne().SetSkip(int64(randomSkip))
-	filter := bson.D{}
 
 	doc, err := collection.FindOne(ctx, filter, opts).DecodeBytes()
 	if err != nil {
 		log.Printf("Error in utils.GetRandomQuote(): %v\n", err)
 	}
 
-	var quote Quote
 	bson.Unmarshal(doc, &quote)
 
-	return &quote
+	return quote
 }
 
-func GetLatestQuote() *Quote {
+// Gets the most recent quote from the collection and unmarshals the BSON to the Quote struct
+func GetLatestQuote() Quote {
 	opts := options.FindOne().SetSort(bson.D{{Key: "createdAt", Value: -1}})
-	filter := bson.D{}
 
 	doc, err := collection.FindOne(ctx, filter, opts).DecodeBytes()
 	if err != nil {
 		log.Printf("Error in utils.GetLatestQuote(): %v\n", err)
 	}
 
-	var quote Quote
 	bson.Unmarshal(doc, &quote)
 
-	return &quote
+	return quote
 }

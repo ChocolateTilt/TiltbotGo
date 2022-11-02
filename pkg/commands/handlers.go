@@ -23,7 +23,7 @@ var CommandHandlers = map[string]func(s *discordgo.Session, i *discordgo.Interac
 		quote := options[0].StringValue()
 		quotee := options[1].UserValue(s)
 		time, _ := discordgo.SnowflakeTimestamp(i.ID)
-		quoteSave := &utils.Quote{
+		quoteSave := utils.Quote{
 			ID:        primitive.NewObjectID(),
 			Quote:     quote,
 			Quotee:    fmt.Sprintf("<@%v>", quotee.ID),
