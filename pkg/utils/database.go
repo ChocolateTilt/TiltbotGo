@@ -22,10 +22,13 @@ type Quote struct {
 	Quoter    string             `bson:"quoter"`
 }
 
-var collection *mongo.Collection
-var ctx = context.TODO()
-var filter = bson.D{}
-var quote Quote
+var (
+	collection  *mongo.Collection
+	ctx         = context.TODO()
+	emptyFilter = bson.D{}
+	quote       Quote
+	min         = 1
+)
 
 // Open a connection to MongoDB
 func ConnectMongo() {
@@ -47,40 +50,59 @@ func CreateQuote(quote Quote) error {
 }
 
 // Estimate number of documents in collection
-func QuoteCount() int {
-	count, _ := collection.EstimatedDocumentCount(ctx)
+func QuoteCount(t string, id string) int {
+	var count int64
+	if t == "full" {
+		count, _ = collection.EstimatedDocumentCount(ctx)
+	} else if t == "user" {
+		userFilter := bson.D{{Key: "quotee", Value: id}}
+		count, _ = collection.CountDocuments(ctx, userFilter)
+	}
 	return int(count)
 }
 
-// Gets a random quote document from the collection and unmarshals the BSON to the Quote struct
-func GetRandomQuote() Quote {
-	dbCount := QuoteCount()
-	max := dbCount
-	min := 1
+// Gets a quote from the collection based on the type (t) of search.
+//
+// Accepts: "rand", "latest", and "user"
+func GetQuote(t string, id string) Quote {
 	rand.Seed(time.Now().UnixNano())
-	randomSkip := rand.Intn(max - min + 1)
-	opts := options.FindOne().SetSkip(int64(randomSkip))
 
-	doc, err := collection.FindOne(ctx, filter, opts).DecodeBytes()
-	if err != nil {
-		log.Printf("Error in utils.GetRandomQuote(): %v\n", err)
+	if t == "rand" {
+		fullDBMax := QuoteCount("full", "")
+		randomSkip := rand.Intn(fullDBMax - min + 1)
+		opts := options.FindOne().SetSkip(int64(randomSkip))
+
+		dbRandDoc, err := collection.FindOne(ctx, emptyFilter, opts).DecodeBytes()
+		if err != nil {
+			log.Printf("Error in utils.GetQuote(): %v\n", err)
+		}
+
+		bson.Unmarshal(dbRandDoc, &quote)
+
+	} else if t == "latest" {
+		opts := options.FindOne().SetSort(bson.D{{Key: "createdAt", Value: -1}})
+
+		latestDoc, err := collection.FindOne(ctx, emptyFilter, opts).DecodeBytes()
+		if err != nil {
+			log.Printf("Error in utils.GetLatestQuote(): %v\n", err)
+		}
+
+		bson.Unmarshal(latestDoc, &quote)
+
+	} else if t == "user" {
+		userDBMax := QuoteCount("user", id)
+		userSkip := rand.Intn(userDBMax - min + 1)
+		userFilter := bson.D{{Key: "quotee", Value: id}}
+		opts := options.FindOne().SetSkip(int64(userSkip))
+
+		userRandDoc, err := collection.FindOne(ctx, userFilter, opts).DecodeBytes()
+		if err != nil {
+			log.Printf("Error in utils.GetQuote(): %v\n", err)
+		}
+
+		bson.Unmarshal(userRandDoc, &quote)
+
 	}
-
-	bson.Unmarshal(doc, &quote)
-
-	return quote
-}
-
-// Gets the most recent quote from the collection and unmarshals the BSON to the Quote struct
-func GetLatestQuote() Quote {
-	opts := options.FindOne().SetSort(bson.D{{Key: "createdAt", Value: -1}})
-
-	doc, err := collection.FindOne(ctx, filter, opts).DecodeBytes()
-	if err != nil {
-		log.Printf("Error in utils.GetLatestQuote(): %v\n", err)
-	}
-
-	bson.Unmarshal(doc, &quote)
 
 	return quote
 }
