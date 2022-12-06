@@ -91,17 +91,20 @@ func GetQuote(t string, id string) Quote {
 
 	} else if t == "user" {
 		userDBMax := QuoteCount("user", id)
-		userSkip := rand.Intn(userDBMax - min + 1)
-		userFilter := bson.D{{Key: "quotee", Value: id}}
-		opts := options.FindOne().SetSkip(int64(userSkip))
+		if userDBMax != 0 {
+			userSkip := rand.Intn(userDBMax - min + 1)
+			userFilter := bson.D{{Key: "quotee", Value: id}}
+			opts := options.FindOne().SetSkip(int64(userSkip))
 
-		userRandDoc, err := collection.FindOne(ctx, userFilter, opts).DecodeBytes()
-		if err != nil {
-			log.Printf("Error in utils.GetQuote(): %v\n", err)
+			userRandDoc, err := collection.FindOne(ctx, userFilter, opts).DecodeBytes()
+			if err != nil {
+				log.Printf("Error in utils.GetQuote(): %v\n", err)
+			}
+
+			bson.Unmarshal(userRandDoc, &quote)
+		} else {
+			quote.Quote = ""
 		}
-
-		bson.Unmarshal(userRandDoc, &quote)
-
 	}
 
 	return quote
