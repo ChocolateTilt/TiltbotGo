@@ -51,7 +51,7 @@ var CommandHandlers = map[string]func(s *discordgo.Session, i *discordgo.Interac
 
 	},
 	"randomquote": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-		doc := utils.GetRandomQuote()
+		doc := utils.GetQuote("rand", "")
 		quoteTime := doc.CreatedAt.Local().Format(time.RFC822)
 
 		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
@@ -73,7 +73,7 @@ var CommandHandlers = map[string]func(s *discordgo.Session, i *discordgo.Interac
 		})
 	},
 	"latestquote": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-		doc := utils.GetLatestQuote()
+		doc := utils.GetQuote("latest", "")
 		quoteTime := doc.CreatedAt.Local().Format(time.RFC822)
 
 		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
@@ -95,7 +95,7 @@ var CommandHandlers = map[string]func(s *discordgo.Session, i *discordgo.Interac
 		})
 	},
 	"countquote": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-		count := utils.QuoteCount()
+		count := utils.QuoteCount("full", "")
 
 		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
@@ -103,5 +103,37 @@ var CommandHandlers = map[string]func(s *discordgo.Session, i *discordgo.Interac
 				Content: fmt.Sprintf("There are %v quotes in the collection.", count),
 			},
 		})
+	},
+	"userquote": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+		options := i.ApplicationCommandData().Options[0].UserValue(s)
+		userID := fmt.Sprintf("<@%v>", options.ID)
+		doc := utils.GetQuote("user", userID)
+		quoteTime := doc.CreatedAt.Local().Format(time.RFC822)
+
+		if doc.Quote != "" {
+			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionResponseData{
+					Embeds: []*discordgo.MessageEmbed{
+						{
+							Title: "Quote",
+							Color: i.Member.User.AccentColor,
+							Fields: []*discordgo.MessageEmbedField{
+								{Name: "Quote", Value: doc.Quote},
+								{Name: "Quotee", Value: doc.Quotee},
+								{Name: "Quoter", Value: doc.Quoter},
+								{Name: "Created At", Value: quoteTime},
+							},
+						},
+					},
+				},
+			})
+		} else {
+			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionResponseData{Content: "No quotes exist for this user."},
+			})
+		}
+
 	},
 }

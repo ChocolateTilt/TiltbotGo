@@ -41,6 +41,18 @@ var (
 			Name:        "countquote",
 			Description: "Get the current number of quotes in the collection",
 		},
+		{
+			Name:        "userquote",
+			Description: "Get a random quote from a specific user",
+			Options: []*discordgo.ApplicationCommandOption{
+				{
+					Type:        discordgo.ApplicationCommandOptionUser,
+					Name:        "user",
+					Description: "The user to search for",
+					Required:    true,
+				},
+			},
+		},
 	}
 )
 
