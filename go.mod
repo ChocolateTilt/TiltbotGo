@@ -3,7 +3,7 @@ module github.com/chocolatetilt/TiltbotGo
 go 1.19
 
 require (
-	github.com/bwmarrin/discordgo v0.26.1
+	github.com/bwmarrin/discordgo v0.27.0
 	go.mongodb.org/mongo-driver v1.11.2
 )
 
