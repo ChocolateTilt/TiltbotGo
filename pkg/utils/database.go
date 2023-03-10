@@ -28,6 +28,8 @@ var (
 	emptyFilter = bson.D{}
 	quote       Quote
 	min         = 1
+	quoteDoc    bson.Raw
+	err         error
 )
 
 // Open a connection to MongoDB
@@ -72,22 +74,22 @@ func GetQuote(t string, id string) Quote {
 		randomSkip := rand.Intn(fullDBMax - min + 1)
 		opts := options.FindOne().SetSkip(int64(randomSkip))
 
-		dbRandDoc, err := collection.FindOne(ctx, emptyFilter, opts).DecodeBytes()
+		quoteDoc, err = collection.FindOne(ctx, emptyFilter, opts).DecodeBytes()
 		if err != nil {
 			log.Printf("Error in utils.GetQuote(): %v\n", err)
 		}
 
-		bson.Unmarshal(dbRandDoc, &quote)
+		bson.Unmarshal(quoteDoc, &quote)
 
 	} else if t == "latest" {
 		opts := options.FindOne().SetSort(bson.D{{Key: "createdAt", Value: -1}})
 
-		latestDoc, err := collection.FindOne(ctx, emptyFilter, opts).DecodeBytes()
+		quoteDoc, err = collection.FindOne(ctx, emptyFilter, opts).DecodeBytes()
 		if err != nil {
 			log.Printf("Error in utils.GetLatestQuote(): %v\n", err)
 		}
 
-		bson.Unmarshal(latestDoc, &quote)
+		bson.Unmarshal(quoteDoc, &quote)
 
 	} else if t == "user" {
 		userDBMax := QuoteCount("user", id)
@@ -96,12 +98,13 @@ func GetQuote(t string, id string) Quote {
 			userFilter := bson.D{{Key: "quotee", Value: id}}
 			opts := options.FindOne().SetSkip(int64(userSkip))
 
-			userRandDoc, err := collection.FindOne(ctx, userFilter, opts).DecodeBytes()
+			quoteDoc, err = collection.FindOne(ctx, userFilter, opts).DecodeBytes()
 			if err != nil {
 				log.Printf("Error in utils.GetQuote(): %v\n", err)
 			}
 
-			bson.Unmarshal(userRandDoc, &quote)
+			bson.Unmarshal(quoteDoc, &quote)
+
 		} else {
 			quote.Quote = ""
 		}
