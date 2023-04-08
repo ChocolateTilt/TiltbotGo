@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/bwmarrin/discordgo v0.27.1
-	go.mongodb.org/mongo-driver v1.11.2
+	go.mongodb.org/mongo-driver v1.11.3
 )
 
 require (
