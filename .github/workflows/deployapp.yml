@@ -26,5 +26,6 @@ jobs:
         with:
           platforms: linux/arm/v7
           context: .
+          platforms: linux/arm/v7
           tags: ghcr.io/chocolatetilt/tiltbotgo:latest
           push: true
