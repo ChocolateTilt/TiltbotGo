@@ -9,47 +9,58 @@ import (
 )
 
 var (
-	// Slice of all available commands
+	// Slice of all application commands
 	Commands = []*discordgo.ApplicationCommand{
 		{
-			Name:        "addquote",
-			Description: "Add a quote to the collection",
+			Name:        "quote",
+			Description: "Commands for interacting with the quote collection",
 			Options: []*discordgo.ApplicationCommandOption{
 				{
-					Type:        discordgo.ApplicationCommandOptionString,
-					Name:        "quote",
-					Description: "Quote to add",
-					Required:    true,
+					Name:        "add",
+					Description: "Add a quote to the collection",
+					Type:        discordgo.ApplicationCommandOptionSubCommand,
+					Options: []*discordgo.ApplicationCommandOption{
+						{
+							Type:        discordgo.ApplicationCommandOptionString,
+							Name:        "quote",
+							Description: "Quote to add",
+							Required:    true,
+						},
+						{
+							Type:        discordgo.ApplicationCommandOptionUser,
+							Name:        "quotee",
+							Description: "Person who spoke the cursed quote",
+							Required:    true,
+						},
+					},
 				},
 				{
-					Type:        discordgo.ApplicationCommandOptionUser,
-					Name:        "quotee",
-					Description: "Person who spoke the cursed quote",
-					Required:    true,
+					Name:        "random",
+					Description: "Get a random quote from the collection",
+					Type:        discordgo.ApplicationCommandOptionSubCommand,
 				},
-			},
-		},
-		{
-			Name:        "randomquote",
-			Description: "Get a random quote from the collection",
-		},
-		{
-			Name:        "latestquote",
-			Description: "Get the latest quote from the collection",
-		},
-		{
-			Name:        "countquote",
-			Description: "Get the current number of quotes in the collection",
-		},
-		{
-			Name:        "userquote",
-			Description: "Get a random quote from a specific user",
-			Options: []*discordgo.ApplicationCommandOption{
 				{
-					Type:        discordgo.ApplicationCommandOptionUser,
+					Name:        "latest",
+					Description: "Get the latest quote from the collection",
+					Type:        discordgo.ApplicationCommandOptionSubCommand,
+				},
+				{
+					Name:        "count",
+					Description: "Get the current number of quotes in the collection",
+					Type:        discordgo.ApplicationCommandOptionSubCommand,
+				},
+				{
 					Name:        "user",
-					Description: "The user to search for",
-					Required:    true,
+					Description: "Get a random quote from a specific user",
+					Type:        discordgo.ApplicationCommandOptionSubCommand,
+					Options: []*discordgo.ApplicationCommandOption{
+						{
+							Type:        discordgo.ApplicationCommandOptionUser,
+							Name:        "user",
+							Description: "The user to search for",
+							Required:    true,
+						},
+					},
 				},
 			},
 		},
