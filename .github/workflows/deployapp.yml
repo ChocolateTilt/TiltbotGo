@@ -24,7 +24,7 @@ jobs:
       - name: Build Image and Push to GHCR
         uses: docker/build-push-action@v4
         with:
-          platforms: linux/arm/v7
           context: .
+          platforms: linux/arm/v7
           tags: ghcr.io/chocolatetilt/tiltbotgo:latest
           push: true
