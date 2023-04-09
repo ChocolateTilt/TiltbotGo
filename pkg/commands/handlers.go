@@ -13,6 +13,22 @@ var CommandHandlers = map[string]func(s *discordgo.Session, i *discordgo.Interac
 		options := i.ApplicationCommandData().Options
 		subCommand := options[0].Name
 		switch subCommand {
+		case "count":
+			count := utils.QuoteCount("full", "")
+			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionResponseData{
+					Embeds: []*discordgo.MessageEmbed{
+						{
+							Title: "Quote Count",
+							Color: i.Member.User.AccentColor,
+							Fields: []*discordgo.MessageEmbedField{
+								{Name: "Total Quotes", Value: fmt.Sprintf("%v", count)},
+							},
+						},
+					},
+				},
+			})
 		case "add":
 			quote := options[0].Options[0].StringValue()
 			quotee := options[0].Options[1].UserValue(s)
@@ -72,7 +88,8 @@ var CommandHandlers = map[string]func(s *discordgo.Session, i *discordgo.Interac
 			})
 		case "user":
 			quotee := options[0].Options[0].UserValue(s)
-			quote := utils.GetQuote("user", quotee.ID)
+			userID := fmt.Sprintf("<@%v>", quotee.ID)
+			quote := utils.GetQuote("user", userID)
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
@@ -85,15 +102,6 @@ var CommandHandlers = map[string]func(s *discordgo.Session, i *discordgo.Interac
 					},
 				},
 			})
-			// 		case "count":
-			// 			count := utils.QuoteCount("full", "")
-			// 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			// 				Type: discordgo.InteractionResponseChannelMessageWithSource,
-			// 				Data: &discordgo.InteractionResponseData{
-			// 					Content: fmt.Sprintf("There are %v quotes in the collection.", count),
-			// 		},
-			// 	}),
-			// }
 		}
 	},
 }
