@@ -25,5 +25,6 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: .
+          platforms: linux/arm/v7
           tags: ghcr.io/chocolatetilt/tiltbotgo:latest
           push: true
