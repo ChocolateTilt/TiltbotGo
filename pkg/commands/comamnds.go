@@ -62,6 +62,11 @@ var (
 						},
 					},
 				},
+				{
+					Name:        "leaderboard",
+					Description: "Get the leaderboard of users with the most quotes",
+					Type:        discordgo.ApplicationCommandOptionSubCommand,
+				},
 			},
 		},
 	}
