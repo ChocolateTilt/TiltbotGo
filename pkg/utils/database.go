@@ -114,3 +114,26 @@ func GetQuote(t string, id string) Quote {
 
 	return quote
 }
+
+func GetLeaderboard() []bson.M {
+	// create a pipeline to aggregate the data
+	pipeline := mongo.Pipeline{
+		{{Key: "$group", Value: bson.D{{Key: "_id", Value: "$quotee"}, {Key: "count", Value: bson.D{{Key: "$sum", Value: 1}}}}}},
+		{{Key: "$sort", Value: bson.D{{Key: "count", Value: -1}}}},
+		{{Key: "$limit", Value: 10}},
+	}
+
+	// create a cursor to iterate through the results
+	cursor, err := collection.Aggregate(ctx, pipeline)
+	if err != nil {
+		log.Printf("Error in utils.GetLeaderboard(): %v\n", err)
+	}
+
+	// create a slice to store the results
+	var results []bson.M
+	if err = cursor.All(ctx, &results); err != nil {
+		log.Printf("Error in utils.GetLeaderboard(): %v\n", err)
+	}
+
+	return results
+}

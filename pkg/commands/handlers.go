@@ -12,6 +12,7 @@ var CommandHandlers = map[string]func(s *discordgo.Session, i *discordgo.Interac
 	"quote": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		options := i.ApplicationCommandData().Options
 		subCommand := options[0].Name
+
 		switch subCommand {
 		case "count":
 			count := utils.QuoteCount("full", "")
@@ -98,6 +99,28 @@ var CommandHandlers = map[string]func(s *discordgo.Session, i *discordgo.Interac
 							Title:  "Random Quote",
 							Color:  quotee.AccentColor,
 							Fields: utils.QuoteFields(quote),
+						},
+					},
+				},
+			})
+		case "leaderboard":
+			leaderboard := utils.GetLeaderboard()
+			var leaderboardVal []string
+
+			for i, v := range leaderboard {
+				leaderboardVal = append(leaderboardVal, fmt.Sprintf("`%v:`%v: %v\n", i+1, v["_id"], v["count"]))
+			}
+
+			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionResponseData{
+					Embeds: []*discordgo.MessageEmbed{
+						{
+							Title: "Quote Leaderboard",
+							Color: 3093151, // dark blue
+							Fields: []*discordgo.MessageEmbedField{
+								{Name: "All-time", Value: fmt.Sprintf("%v", leaderboardVal)},
+							},
 						},
 					},
 				},
