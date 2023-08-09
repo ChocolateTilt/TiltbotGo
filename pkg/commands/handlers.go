@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/chocolatetilt/TiltbotGo/pkg/utils"
@@ -111,6 +112,8 @@ var CommandHandlers = map[string]func(s *discordgo.Session, i *discordgo.Interac
 				leaderboardVal = append(leaderboardVal, fmt.Sprintf("`%v:`%v: %v\n", i+1, v["_id"], v["count"]))
 			}
 
+			cleanLB := strings.Join(leaderboardVal, "\n")
+
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
@@ -119,7 +122,7 @@ var CommandHandlers = map[string]func(s *discordgo.Session, i *discordgo.Interac
 							Title: "Quote Leaderboard",
 							Color: 3093151, // dark blue
 							Fields: []*discordgo.MessageEmbedField{
-								{Name: "All-time", Value: fmt.Sprintf("%v", leaderboardVal)},
+								{Name: "All-time", Value: cleanLB},
 							},
 						},
 					},
