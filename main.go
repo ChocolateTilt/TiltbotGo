@@ -1,50 +1,66 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/chocolatetilt/TiltbotGo/pkg/commands"
-	"github.com/chocolatetilt/TiltbotGo/pkg/utils"
+	"github.com/joho/godotenv"
 )
 
-func init() {
-	var err error
-	utils.Session, err = discordgo.New("Bot " + utils.Conf.Token)
+// setCommands registers commands to Discord in an overwrite fashion.
+func setCommands(s *discordgo.Session) {
+	discGuild := os.Getenv("DISCORD_GUILD")
+	log.Println("Adding commands...")
+	_, err := s.ApplicationCommandBulkOverwrite(s.State.User.ID, discGuild, commands)
 	if err != nil {
-		log.Fatalf("Invalid bot params: %v", err)
+		log.Printf("Error in command creation: %v\n", err)
 	}
-	utils.ConnectMongo()
+	fmt.Println("All commands successfully registered (overwrite).")
 }
 
 func main() {
-	// add a handler for the "ready" event before opening the connection
-	utils.Session.AddHandler(func(s *discordgo.Session, r *discordgo.Ready) {
-		log.Printf("Logged in as: %v#%v", s.State.User.Username, s.State.User.Discriminator)
-	})
-	// open the websocket connection to Discord
-	err := utils.Session.Open()
+	err := godotenv.Load()
 	if err != nil {
-		log.Fatalf("Cannot open the Session: %v", err)
+		log.Fatalf("Error loading .env file: %v", err)
 	}
 
-	commands.SetCommands()
+	discToken := os.Getenv("DISCORD_TOKEN")
 
-	// Add handler to catch Interactions (app command usage)
-	utils.Session.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-		if h, ok := commands.CommandHandlers[i.ApplicationCommandData().Name]; ok {
+	err = connectMongo()
+	if err != nil {
+		log.Fatalf("Error connecting to MongoDB: %v", err)
+	}
+
+	session, err := discordgo.New("Bot " + discToken)
+	if err != nil {
+		log.Fatalf("Invalid bot params: %v", err)
+	}
+
+	session.AddHandler(func(s *discordgo.Session, r *discordgo.Ready) {
+		log.Printf("Logged in as: %v#%v", s.State.User.Username, s.State.User.Discriminator)
+	})
+
+	err = session.Open()
+	if err != nil {
+		log.Fatalf("Cannot open the session: %v", err)
+	}
+
+	setCommands(session)
+
+	session.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+		if h, ok := commandHandlers[i.ApplicationCommandData().Name]; ok {
 			h(s, i)
 		}
 	})
 
-	// close Session on Ctrl+C
-	defer utils.Session.Close()
+	defer session.Close()
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 	log.Println("Stop the container or press Ctrl+C to exit")
 	<-stop
-	log.Printf("Gracefully disconnected: %v#%v", utils.Session.State.User.Username, utils.Session.State.User.Discriminator)
+	log.Printf("Gracefully disconnected: %v#%v", session.State.User.Username, session.State.User.Discriminator)
 }

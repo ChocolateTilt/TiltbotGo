@@ -1,22 +1,25 @@
-package commands
+package main
 
 import (
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/chocolatetilt/TiltbotGo/pkg/utils"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-var CommandHandlers = map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate){
+// commandHandlers is a map of all available Discord slash command handlers
+var commandHandlers = map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate){
 	"quote": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		options := i.ApplicationCommandData().Options
 		subCommand := options[0].Name
+		var searchType QuoteType
 
 		switch subCommand {
 		case "count":
-			count := utils.QuoteCount("full", "")
+			var countType QuoteType = "full"
+			count := countType.quoteCount("")
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
@@ -25,7 +28,7 @@ var CommandHandlers = map[string]func(s *discordgo.Session, i *discordgo.Interac
 							Title: "Quote Count",
 							Color: i.Member.User.AccentColor,
 							Fields: []*discordgo.MessageEmbedField{
-								{Name: "Total Quotes", Value: fmt.Sprintf("%v", count)},
+								{Name: "Total Quotes", Value: fmt.Sprintf("%d", count)},
 							},
 						},
 					},
@@ -35,33 +38,33 @@ var CommandHandlers = map[string]func(s *discordgo.Session, i *discordgo.Interac
 			quote := options[0].Options[0].StringValue()
 			quotee := options[0].Options[1].UserValue(s)
 			time, _ := discordgo.SnowflakeTimestamp(i.ID)
-			quoteSave := utils.Quote{
+			quoteSave := Quote{
 				ID:        primitive.NewObjectID(),
 				Quote:     quote,
 				Quotee:    fmt.Sprintf("<@%v>", quotee.ID),
 				Quoter:    fmt.Sprintf("<@%v>", i.Member.User.ID),
 				CreatedAt: time,
 			}
-			utils.CreateQuote(quoteSave)
+			err := createQuote(quoteSave)
+			if err != nil {
+				log.Println(err)
+				return
+			}
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
 					Embeds: []*discordgo.MessageEmbed{
 						{
-							Title: "New Quote",
-							Color: quotee.AccentColor,
-							Fields: []*discordgo.MessageEmbedField{
-								{Name: "Quote", Value: quoteSave.Quote},
-								{Name: "Quotee", Value: quoteSave.Quotee},
-								{Name: "Quoter", Value: quoteSave.Quoter},
-								{Name: "Created At", Value: utils.DiscSnowflakeConvert(i.ID)},
-							},
+							Title:  "New Quote",
+							Color:  quotee.AccentColor,
+							Fields: quoteFields(quoteSave),
 						},
 					},
 				},
 			})
 		case "random":
-			quote := utils.GetQuote("rand", "")
+			searchType = "rand"
+			quote := searchType.getQuote("")
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
@@ -69,13 +72,14 @@ var CommandHandlers = map[string]func(s *discordgo.Session, i *discordgo.Interac
 						{
 							Title:  "Random Quote",
 							Color:  i.Member.User.AccentColor,
-							Fields: utils.QuoteFields(quote),
+							Fields: quoteFields(quote),
 						},
 					},
 				},
 			})
 		case "latest":
-			quote := utils.GetQuote("latest", "")
+			searchType = "latest"
+			quote := searchType.getQuote("")
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
@@ -83,15 +87,16 @@ var CommandHandlers = map[string]func(s *discordgo.Session, i *discordgo.Interac
 						{
 							Title:  "Latest Quote",
 							Color:  i.Member.User.AccentColor,
-							Fields: utils.QuoteFields(quote),
+							Fields: quoteFields(quote),
 						},
 					},
 				},
 			})
 		case "user":
+			searchType = "user"
 			quotee := options[0].Options[0].UserValue(s)
 			userID := fmt.Sprintf("<@%v>", quotee.ID)
-			quote := utils.GetQuote("user", userID)
+			quote := searchType.getQuote(userID)
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
@@ -99,13 +104,13 @@ var CommandHandlers = map[string]func(s *discordgo.Session, i *discordgo.Interac
 						{
 							Title:  "Random Quote",
 							Color:  quotee.AccentColor,
-							Fields: utils.QuoteFields(quote),
+							Fields: quoteFields(quote),
 						},
 					},
 				},
 			})
 		case "leaderboard":
-			leaderboard := utils.GetLeaderboard()
+			leaderboard := getLeaderboard()
 			var leaderboardVal []string
 
 			for i, v := range leaderboard {

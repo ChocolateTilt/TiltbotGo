@@ -1,4 +1,4 @@
 .github
 .gitattributes
 .gitignore
-conf.json
+.env
