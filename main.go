@@ -12,44 +12,41 @@ import (
 )
 
 // setCommands registers commands to Discord in an overwrite fashion.
-func setCommands(s *discordgo.Session) {
-	discGuild := os.Getenv("DISCORD_GUILD")
+func setCommands(s *discordgo.Session) error {
 	log.Println("Adding commands...")
-	_, err := s.ApplicationCommandBulkOverwrite(s.State.User.ID, discGuild, commands)
+	_, err := s.ApplicationCommandBulkOverwrite(s.State.User.ID, os.Getenv("DISCORD_GUILD"), commands)
 	if err != nil {
-		log.Printf("Error in command creation: %v\n", err)
+		return fmt.Errorf("error in command creation: %w", err)
 	}
-	fmt.Println("All commands successfully registered (overwrite).")
+	log.Println("All commands successfully registered (overwrite)")
+	return nil
 }
 
 func main() {
-	err := godotenv.Load()
-	if err != nil {
+	if err := godotenv.Load(); err != nil {
 		log.Fatalf("Error loading .env file: %v", err)
 	}
 
-	discToken := os.Getenv("DISCORD_TOKEN")
-
-	err = connectMongo()
-	if err != nil {
-		log.Fatalf("Error connecting to MongoDB: %v", err)
+	if err := connectMongo(); err != nil {
+		log.Fatalln(err)
 	}
 
-	session, err := discordgo.New("Bot " + discToken)
+	session, err := discordgo.New("Bot " + os.Getenv("DISCORD_TOKEN"))
 	if err != nil {
-		log.Fatalf("Invalid bot params: %v", err)
+		log.Fatalf("Cannot create a Discord session: %v", err)
 	}
 
 	session.AddHandler(func(s *discordgo.Session, r *discordgo.Ready) {
 		log.Printf("Logged in as: %v#%v", s.State.User.Username, s.State.User.Discriminator)
 	})
 
-	err = session.Open()
-	if err != nil {
+	if err = session.Open(); err != nil {
 		log.Fatalf("Cannot open the session: %v", err)
 	}
 
-	setCommands(session)
+	if err = setCommands(session); err != nil {
+		log.Fatalln(err)
+	}
 
 	session.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		if h, ok := commandHandlers[i.ApplicationCommandData().Name]; ok {

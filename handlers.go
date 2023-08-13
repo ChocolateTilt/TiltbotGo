@@ -2,8 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
-	"strings"
 
 	"github.com/bwmarrin/discordgo"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -19,7 +17,12 @@ var commandHandlers = map[string]func(s *discordgo.Session, i *discordgo.Interac
 		switch subCommand {
 		case "count":
 			var countType QuoteType = "full"
-			count := countType.quoteCount("")
+			count, err := countType.quoteCount("")
+			if err != nil {
+				sendErrToDiscord(s, i, err)
+				return
+			}
+
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
@@ -47,9 +50,10 @@ var commandHandlers = map[string]func(s *discordgo.Session, i *discordgo.Interac
 			}
 			err := createQuote(quoteSave)
 			if err != nil {
-				log.Println(err)
+				sendErrToDiscord(s, i, err)
 				return
 			}
+
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
@@ -64,7 +68,11 @@ var commandHandlers = map[string]func(s *discordgo.Session, i *discordgo.Interac
 			})
 		case "random":
 			searchType = "rand"
-			quote := searchType.getQuote("")
+			quote, err := searchType.getQuote("")
+			if err != nil {
+				sendErrToDiscord(s, i, err)
+			}
+
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
@@ -79,7 +87,11 @@ var commandHandlers = map[string]func(s *discordgo.Session, i *discordgo.Interac
 			})
 		case "latest":
 			searchType = "latest"
-			quote := searchType.getQuote("")
+			quote, err := searchType.getQuote("")
+			if err != nil {
+				sendErrToDiscord(s, i, err)
+			}
+
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
@@ -96,7 +108,11 @@ var commandHandlers = map[string]func(s *discordgo.Session, i *discordgo.Interac
 			searchType = "user"
 			quotee := options[0].Options[0].UserValue(s)
 			userID := fmt.Sprintf("<@%v>", quotee.ID)
-			quote := searchType.getQuote(userID)
+			quote, err := searchType.getQuote(userID)
+			if err != nil {
+				sendErrToDiscord(s, i, err)
+			}
+
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
@@ -110,14 +126,10 @@ var commandHandlers = map[string]func(s *discordgo.Session, i *discordgo.Interac
 				},
 			})
 		case "leaderboard":
-			leaderboard := getLeaderboard()
-			var leaderboardVal []string
-
-			for i, v := range leaderboard {
-				leaderboardVal = append(leaderboardVal, fmt.Sprintf("`%v:`%v: %v\n", i+1, v["_id"], v["count"]))
+			leaderboard, err := getLeaderboard()
+			if err != nil {
+				sendErrToDiscord(s, i, err)
 			}
-
-			cleanLB := strings.Join(leaderboardVal, "\n")
 
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
@@ -127,7 +139,7 @@ var commandHandlers = map[string]func(s *discordgo.Session, i *discordgo.Interac
 							Title: "Quote Leaderboard",
 							Color: 3093151, // dark blue
 							Fields: []*discordgo.MessageEmbedField{
-								{Name: "All-time", Value: cleanLB},
+								{Name: "All-time", Value: leaderboard},
 							},
 						},
 					},
