@@ -1,6 +1,5 @@
 # TiltbotGo
-A small bot that primarily focuses on storing silly things my friends say IRL or in voice chats. Its been recreated 
-A recreation of Tiltbot (discord.js) using Go (discordgo). 
+A small bot that primarily focuses on storing silly things my friends say IRL or in voice chats. Its a recreation of "Tiltbot" that was written in JavaScript using discord.js.
 
 # Commands
 `/quote add` - Inserts a new quote into the collection
