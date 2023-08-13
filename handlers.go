@@ -29,7 +29,7 @@ var commandHandlers = map[string]func(s *discordgo.Session, i *discordgo.Interac
 					Embeds: []*discordgo.MessageEmbed{
 						{
 							Title: "Quote Count",
-							Color: i.Member.User.AccentColor,
+							Color: 3093151, // dark blue
 							Fields: []*discordgo.MessageEmbedField{
 								{Name: "Total Quotes", Value: fmt.Sprintf("%d", count)},
 							},
@@ -60,7 +60,7 @@ var commandHandlers = map[string]func(s *discordgo.Session, i *discordgo.Interac
 					Embeds: []*discordgo.MessageEmbed{
 						{
 							Title:  "New Quote",
-							Color:  quotee.AccentColor,
+							Color:  3093151, // dark blue
 							Fields: quoteFields(quoteSave),
 						},
 					},
@@ -79,7 +79,7 @@ var commandHandlers = map[string]func(s *discordgo.Session, i *discordgo.Interac
 					Embeds: []*discordgo.MessageEmbed{
 						{
 							Title:  "Random Quote",
-							Color:  i.Member.User.AccentColor,
+							Color:  3093151, // dark blue
 							Fields: quoteFields(quote),
 						},
 					},
@@ -98,7 +98,7 @@ var commandHandlers = map[string]func(s *discordgo.Session, i *discordgo.Interac
 					Embeds: []*discordgo.MessageEmbed{
 						{
 							Title:  "Latest Quote",
-							Color:  i.Member.User.AccentColor,
+							Color:  3093151, // dark blue
 							Fields: quoteFields(quote),
 						},
 					},
@@ -119,7 +119,7 @@ var commandHandlers = map[string]func(s *discordgo.Session, i *discordgo.Interac
 					Embeds: []*discordgo.MessageEmbed{
 						{
 							Title:  "Random Quote",
-							Color:  quotee.AccentColor,
+							Color:  3093151, // dark blue
 							Fields: quoteFields(quote),
 						},
 					},
