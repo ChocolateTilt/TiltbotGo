@@ -23,7 +23,7 @@ func sendErrToDiscord(s *discordgo.Session, i *discordgo.InteractionCreate, err 
 	s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
-			Content: fmt.Sprintf("Error executing command, if this persists please contact <@%s>\nError message: %s", os.Getenv("DISC_BOT_OWNER_ID"), err),
+			Content: fmt.Sprintf("Error executing command, please attempt it again. If this persists please contact <@%s> with the the error message.\nError message: %s", os.Getenv("DISC_BOT_OWNER_ID"), err),
 			Flags:   discordgo.MessageFlagsEphemeral,
 		},
 	})
