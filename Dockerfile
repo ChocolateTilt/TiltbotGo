@@ -30,7 +30,7 @@ RUN GOOS=linux GOARCH=arm go build -o ./app/bot .
 # STEP 2 build final image
 ############################
 
-FROM arm32v7/alpine:latest
+FROM scratch
 
 ENV TZ=America/Detroit
 
