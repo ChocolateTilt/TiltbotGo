@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"os"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
@@ -15,4 +17,14 @@ func quoteFields(quote Quote) []*discordgo.MessageEmbedField {
 		{Name: "Quoter", Value: quote.Quoter},
 		{Name: "Created At", Value: quoteTime},
 	}
+}
+
+func sendErrToDiscord(s *discordgo.Session, i *discordgo.InteractionCreate, err error) {
+	s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Content: fmt.Sprintf("Error executing command, if this persists please contact <@%s>\nError message: %s", os.Getenv("DISC_BOT_OWNER_ID"), err),
+			Flags:   discordgo.MessageFlagsEphemeral,
+		},
+	})
 }
