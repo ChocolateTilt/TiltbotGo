@@ -3,9 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"math/rand"
 	"os"
+	"strings"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -39,7 +39,7 @@ func connectMongo() error {
 	clientOptions := options.Client().ApplyURI(mongoURI)
 	client, err := mongo.Connect(ctx, clientOptions)
 	if err != nil {
-		return err
+		return fmt.Errorf("error connecting to MongoDB: %w", err)
 	}
 
 	collection = client.Database("TiltBot").Collection(mongoCollectionName)
@@ -59,23 +59,30 @@ func createQuote(quote Quote) error {
 // Estimate number of documents in the collection. id is only used for "user" type searches.
 //
 // Accepts: "full", and "user"
-func (t QuoteType) quoteCount(id string) int {
+func (t QuoteType) quoteCount(id string) (int, error) {
 	var count int64
+	var err error
 
 	switch t {
 	case "full":
-		count, _ = collection.EstimatedDocumentCount(ctx)
+		count, err = collection.EstimatedDocumentCount(ctx)
+		if err != nil {
+			return 0, err
+		}
 	case "user":
 		userFilter := bson.D{{Key: "quotee", Value: id}}
-		count, _ = collection.CountDocuments(ctx, userFilter)
+		count, err = collection.CountDocuments(ctx, userFilter)
+		if err != nil {
+			return 0, fmt.Errorf("error counting documents for user quote: %w", err)
+		}
 	}
-	return int(count)
+	return int(count), err
 }
 
 // getQuote returns a quote from the collection based on the type (t) of search. id is only used for "user" type searches.
 //
 // Accepts: "rand", "latest", and "user"
-func (t QuoteType) getQuote(id string) Quote {
+func (t QuoteType) getQuote(id string) (Quote, error) {
 	var (
 		min         = 1
 		emptyFilter = bson.D{}
@@ -85,19 +92,22 @@ func (t QuoteType) getQuote(id string) Quote {
 	switch t {
 	case "rand":
 		var qType QuoteType = "full"
-		fullDBMax := qType.quoteCount("")
+		fullDBMax, err := qType.quoteCount("")
+		if err != nil {
+			return quote, fmt.Errorf("error getting quote count for random quote: %w", err)
+		}
 		rand.New(rand.NewSource(time.Now().UnixNano()))
 		randomSkip := rand.Intn(fullDBMax + min - 1)
 		opts := options.FindOne().SetSkip(int64(randomSkip))
 
 		doc, err := collection.FindOne(ctx, emptyFilter, opts).DecodeBytes()
 		if err != nil {
-			log.Printf("error decoding document: %v\n", err)
+			return quote, fmt.Errorf("error decoding random quote: %w", err)
 		}
 
 		err = bson.Unmarshal(doc, &quote)
 		if err != nil {
-			log.Printf("error unmarshaling document: %v\n", err)
+			return quote, fmt.Errorf("error unmarshalling random quote: %w", err)
 		}
 
 	case "latest":
@@ -105,12 +115,19 @@ func (t QuoteType) getQuote(id string) Quote {
 
 		doc, err := collection.FindOne(ctx, emptyFilter, opts).DecodeBytes()
 		if err != nil {
-			log.Printf("Error in utils.GetLatestQuote(): %v\n", err)
+			return quote, fmt.Errorf("error decoding latest quote: %w", err)
 		}
 
 		bson.Unmarshal(doc, &quote)
+		if err != nil {
+			return quote, fmt.Errorf("error unmarshalling latest quote: %w", err)
+		}
+
 	case "user":
-		userDBMax := t.quoteCount(id)
+		userDBMax, err := t.quoteCount(id)
+		if err != nil {
+			return quote, fmt.Errorf("error getting quote count for user quote: %w", err)
+		}
 		if userDBMax != 0 {
 			userSkip := rand.Intn(userDBMax - min + 1)
 			userFilter := bson.D{{Key: "quotee", Value: id}}
@@ -118,20 +135,26 @@ func (t QuoteType) getQuote(id string) Quote {
 
 			doc, err := collection.FindOne(ctx, userFilter, opts).DecodeBytes()
 			if err != nil {
-				log.Printf("Error in utils.GetQuote(): %v\n", err)
+				return quote, fmt.Errorf("error decoding user quote: %w", err)
 			}
 
-			bson.Unmarshal(doc, &quote)
+			err = bson.Unmarshal(doc, &quote)
+			if err != nil {
+				return quote, fmt.Errorf("error unmarshalling user quote: %w", err)
+			}
+
 		}
 	default:
 		quote.Quote = ""
 	}
 
-	return quote
+	return quote, nil
 }
 
 // getLeaderboard returns the top 10 quotees from the collection
-func getLeaderboard() []bson.M {
+func getLeaderboard() (string, error) {
+	var leaderboard []string
+
 	pipeline := mongo.Pipeline{
 		{{Key: "$group", Value: bson.D{{Key: "_id", Value: "$quotee"}, {Key: "count", Value: bson.D{{Key: "$sum", Value: 1}}}}}},
 		{{Key: "$sort", Value: bson.D{{Key: "count", Value: -1}}}},
@@ -140,13 +163,19 @@ func getLeaderboard() []bson.M {
 
 	cursor, err := collection.Aggregate(ctx, pipeline)
 	if err != nil {
-		log.Printf("Error in utils.GetLeaderboard(): %v\n", err)
+		return "", fmt.Errorf("error aggregating documents for leaderboard: %w", err)
 	}
 
 	var results []bson.M
 	if err = cursor.All(ctx, &results); err != nil {
-		log.Printf("Error in utils.GetLeaderboard(): %v\n", err)
+		return "", fmt.Errorf("error decoding documents for leaderboard: %w", err)
 	}
 
-	return results
+	for i, v := range results {
+		leaderboard = append(leaderboard, fmt.Sprintf("`%v:`%v: %v\n", i+1, v["_id"], v["count"]))
+	}
+
+	cleanLB := strings.Join(leaderboard, "\n")
+
+	return cleanLB, nil
 }
