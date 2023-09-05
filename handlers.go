@@ -40,7 +40,11 @@ var commandHandlers = map[string]func(s *discordgo.Session, i *discordgo.Interac
 		case "add":
 			quote := options[0].Options[0].StringValue()
 			quotee := options[0].Options[1].UserValue(s)
-			time, _ := discordgo.SnowflakeTimestamp(i.ID)
+			time, err := discordgo.SnowflakeTimestamp(i.ID)
+			if err != nil {
+				sendErrToDiscord(s, i, err)
+				return
+			}
 			quoteSave := Quote{
 				ID:        primitive.NewObjectID(),
 				Quote:     quote,
@@ -48,7 +52,7 @@ var commandHandlers = map[string]func(s *discordgo.Session, i *discordgo.Interac
 				Quoter:    fmt.Sprintf("<@%v>", i.Member.User.ID),
 				CreatedAt: time,
 			}
-			err := createQuote(quoteSave)
+			err = createQuote(quoteSave)
 			if err != nil {
 				sendErrToDiscord(s, i, err)
 				return
