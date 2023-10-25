@@ -28,15 +28,16 @@ type QuoteType string
 
 var (
 	collection *mongo.Collection
-	ctx        = context.TODO()
+	ctx        = context.Background()
 )
 
 // connectMongo opens a connection to the MongoDB URI defined in the .env file
 func connectMongo() error {
 	mongoURI := os.Getenv("MONGO_URI")
 	mongoCollectionName := os.Getenv("MONGO_COLLECTION_NAME")
+	serverAPI := options.ServerAPI(options.ServerAPIVersion1)
+	clientOptions := options.Client().ApplyURI(mongoURI).SetServerAPIOptions(serverAPI)
 
-	clientOptions := options.Client().ApplyURI(mongoURI)
 	client, err := mongo.Connect(ctx, clientOptions)
 	if err != nil {
 		return fmt.Errorf("error connecting to MongoDB: %w", err)
