@@ -9,7 +9,7 @@ var (
 	commands = []*discordgo.ApplicationCommand{
 		{
 			Name:        "quote",
-			Description: "Commands for interacting with the quote collection",
+			Description: "Commands for interacting with the collection of quotes",
 			Options: []*discordgo.ApplicationCommandOption{
 				{
 					Name:        "add",
