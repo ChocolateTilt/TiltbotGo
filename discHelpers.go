@@ -8,7 +8,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
-// quoteFields returns a slice of MessageEmbedFields for a given Quote
+// quoteFields helps create the embed fields for a quote
 func quoteFields(quote Quote) []*discordgo.MessageEmbedField {
 	quoteTime := quote.CreatedAt.Local().Format(time.RFC822)
 	return []*discordgo.MessageEmbedField{
@@ -19,6 +19,7 @@ func quoteFields(quote Quote) []*discordgo.MessageEmbedField {
 	}
 }
 
+// sendErrToDiscord sends an ephemeral message to the user who sent the command with the error message
 func sendErrToDiscord(s *discordgo.Session, i *discordgo.InteractionCreate, err error) {
 	s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,

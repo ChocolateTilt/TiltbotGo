@@ -82,7 +82,7 @@ func (t QuoteType) quoteCount(id string) (int, error) {
 
 // getQuote returns a quote from the collection based on the type (t) of search. id is only used for "user" type searches.
 //
-// Accepts: "rand", "latest", and "user"
+// Types: "rand", "latest", and "user"
 func (t QuoteType) getQuote(id string) (Quote, error) {
 	var (
 		min         = 1
