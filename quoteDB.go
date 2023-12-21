@@ -101,7 +101,7 @@ func (t QuoteType) getQuote(id string) (Quote, error) {
 		randomSkip := rand.Intn(fullDBMax + min - 1)
 		opts := options.FindOne().SetSkip(int64(randomSkip))
 
-		doc, err := collection.FindOne(ctx, emptyFilter, opts).DecodeBytes()
+		doc, err := collection.FindOne(ctx, emptyFilter, opts).Raw()
 		if err != nil {
 			return quote, fmt.Errorf("error decoding random quote: %w", err)
 		}
@@ -114,7 +114,7 @@ func (t QuoteType) getQuote(id string) (Quote, error) {
 	case "latest":
 		opts := options.FindOne().SetSort(bson.D{{Key: "createdAt", Value: -1}})
 
-		doc, err := collection.FindOne(ctx, emptyFilter, opts).DecodeBytes()
+		doc, err := collection.FindOne(ctx, emptyFilter, opts).Raw()
 		if err != nil {
 			return quote, fmt.Errorf("error decoding latest quote: %w", err)
 		}
@@ -134,7 +134,7 @@ func (t QuoteType) getQuote(id string) (Quote, error) {
 			userFilter := bson.D{{Key: "quotee", Value: id}}
 			opts := options.FindOne().SetSkip(int64(userSkip))
 
-			doc, err := collection.FindOne(ctx, userFilter, opts).DecodeBytes()
+			doc, err := collection.FindOne(ctx, userFilter, opts).Raw()
 			if err != nil {
 				return quote, fmt.Errorf("error decoding user quote: %w", err)
 			}
