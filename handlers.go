@@ -7,7 +7,11 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-var searchType QuoteType
+const (
+	QuoteTypeUser   = "user"
+	QuoteTypeLatest = "latest"
+	QuoteTypeRandom = "rand"
+)
 
 var quoteHandler = map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate, options []*discordgo.ApplicationCommandInteractionDataOption){
 	"count": func(s *discordgo.Session, i *discordgo.InteractionCreate, options []*discordgo.ApplicationCommandInteractionDataOption) {
@@ -52,46 +56,29 @@ var quoteHandler = map[string]func(s *discordgo.Session, i *discordgo.Interactio
 		})
 	},
 	"user": func(s *discordgo.Session, i *discordgo.InteractionCreate, options []*discordgo.ApplicationCommandInteractionDataOption) {
-		searchType = "user"
-		quotee := options[0].Options[0].UserValue(s)
-		userID := fmt.Sprintf("<@%v>", quotee.ID)
-		quote, err := searchType.getQuote(userID)
-		if err != nil {
-			sendErr(s, i, err)
-		}
-		sendEmbed(s, i, "Random Quote", quoteFields(quote))
+		handleQuoteSearch(s, i, options, QuoteTypeUser)
 	},
 	"latest": func(s *discordgo.Session, i *discordgo.InteractionCreate, options []*discordgo.ApplicationCommandInteractionDataOption) {
-		searchType = "latest"
-		quote, err := searchType.getQuote("")
-		if err != nil {
-			sendErr(s, i, err)
-		}
-		sendEmbed(s, i, "Latest Quote", quoteFields(quote))
+		handleQuoteSearch(s, i, options, QuoteTypeLatest)
 	},
 	"random": func(s *discordgo.Session, i *discordgo.InteractionCreate, options []*discordgo.ApplicationCommandInteractionDataOption) {
-		searchType = "rand"
-		quote, err := searchType.getQuote("")
-		if err != nil {
-			sendErr(s, i, err)
-		}
-		sendEmbed(s, i, "Random Quote", quoteFields(quote))
+		handleQuoteSearch(s, i, options, QuoteTypeRandom)
 	},
 }
 
-// commandHandlers is a map of all available Discord slash command handlers
+// commandHandlers is the entrypoint for application commands and maps to commands and subcommands
 var commandHandlers = map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate){
 
 	"quote": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		options := i.ApplicationCommandData().Options
 		subCommand := options[0].Name
 
-		handler, ok := quoteHandler[subCommand]
+		h, ok := quoteHandler[subCommand]
 		if !ok {
 			sendErr(s, i, fmt.Errorf("unknown sub-command: %s", subCommand))
 			return
 		}
 
-		handler(s, i, options)
+		h(s, i, options)
 	},
 }

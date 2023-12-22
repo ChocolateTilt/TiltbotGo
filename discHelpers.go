@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"time"
 
@@ -45,4 +46,19 @@ func sendEmbed(s *discordgo.Session, i *discordgo.InteractionCreate, title strin
 			},
 		},
 	})
+}
+
+func handleQuoteSearch(s *discordgo.Session, i *discordgo.InteractionCreate, options []*discordgo.ApplicationCommandInteractionDataOption, searchType QuoteType) {
+	var quoteeID string
+	if searchType == QuoteTypeUser {
+		quotee := options[0].Options[0].UserValue(s)
+		quoteeID = fmt.Sprintf("<@%v>", quotee.ID)
+	}
+	quote, err := searchType.getQuote(quoteeID)
+	if err != nil {
+		sendErr(s, i, err)
+		log.Printf("Error getting quote: %v", err) // Log the error
+	}
+	// TODO: Change embed title dynamically (ex: "Random <name> quote")
+	sendEmbed(s, i, "Random Quote", quoteFields(quote))
 }
