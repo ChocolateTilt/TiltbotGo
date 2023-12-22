@@ -29,12 +29,23 @@ type QuoteType string
 var (
 	collection *mongo.Collection
 	ctx        = context.Background()
+	rng        = rand.New(rand.NewSource(time.Now().UnixNano()))
+	dbMax      int
+	dbMaxT     time.Time
 )
 
-// connectMongo opens a connection to the MongoDB URI defined in the .env file
+// connectMongo opens a connection to the MongoDB URI defined in the .env file with a 10 second timeout
 func connectMongo() error {
 	mongoURI := os.Getenv("MONGO_URI")
 	mongoCollectionName := os.Getenv("MONGO_COLLECTION_NAME")
+
+	if mongoURI == "" || mongoCollectionName == "" {
+		return fmt.Errorf("mongo URI and collection name not found in .env")
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
 	serverAPI := options.ServerAPI(options.ServerAPIVersion1)
 	clientOptions := options.Client().ApplyURI(mongoURI).SetServerAPIOptions(serverAPI)
 
@@ -50,6 +61,7 @@ func connectMongo() error {
 
 // createQuote inserts a new quote into the MongoDB collection
 func createQuote(quote Quote) error {
+	// TODO: Figure out a way to cache if a quote was added within the cached dbCountMax time. If yes, clear dbCountMax
 	_, err := collection.InsertOne(ctx, quote)
 	if err != nil {
 		return fmt.Errorf("problem while creating a quote in the collection: %v", err)
@@ -66,10 +78,13 @@ func (t QuoteType) quoteCount(id string) (int, error) {
 
 	switch t {
 	case "full":
-		count, err = collection.EstimatedDocumentCount(ctx)
-		if err != nil {
-			return 0, err
+		if time.Since(dbMaxT).Hours() >= 1 {
+			count, err = collection.EstimatedDocumentCount(ctx)
+			if err != nil {
+				return 0, err
+			}
 		}
+
 	case "user":
 		userFilter := bson.D{{Key: "quotee", Value: id}}
 		count, err = collection.CountDocuments(ctx, userFilter)
@@ -92,13 +107,18 @@ func (t QuoteType) getQuote(id string) (Quote, error) {
 
 	switch t {
 	case "rand":
-		var qType QuoteType = "full"
-		fullDBMax, err := qType.quoteCount("")
-		if err != nil {
-			return quote, fmt.Errorf("error getting quote count for random quote: %w", err)
+		if time.Since(dbMaxT).Hours() >= 1 {
+			var qType QuoteType = "full"
+			var err error
+			dbMax, err = qType.quoteCount("")
+			if err != nil {
+				return quote, fmt.Errorf("error getting quote count for random quote: %w", err)
+			}
+			// Update the timestamp
+			dbMaxT = time.Now()
 		}
-		rand.New(rand.NewSource(time.Now().UnixNano()))
-		randomSkip := rand.Intn(fullDBMax + min - 1)
+
+		randomSkip := rng.Intn(dbMax + min - 1)
 		opts := options.FindOne().SetSkip(int64(randomSkip))
 
 		doc, err := collection.FindOne(ctx, emptyFilter, opts).Raw()
