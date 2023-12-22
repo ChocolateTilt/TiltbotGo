@@ -8,7 +8,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
-// quoteFields helps create the embed fields for a quote
+// quoteFields creates the embed fields for a quote
 func quoteFields(quote Quote) []*discordgo.MessageEmbedField {
 	quoteTime := quote.CreatedAt.Local().Format(time.RFC822)
 	return []*discordgo.MessageEmbedField{
@@ -19,14 +19,30 @@ func quoteFields(quote Quote) []*discordgo.MessageEmbedField {
 	}
 }
 
-// sendErrToDiscord sends an ephemeral message to the user who sent the command with the error message
-func sendErrToDiscord(s *discordgo.Session, i *discordgo.InteractionCreate, err error) {
+// sendErr sends an ephemeral message to the user who sent the command with the error message
+func sendErr(s *discordgo.Session, i *discordgo.InteractionCreate, err error) {
 	s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
 			Content: fmt.Sprintf("Error executing command, please attempt it again. If this persists please contact <@%s> with the the error message.\nError message: %s",
 				os.Getenv("DISC_BOT_OWNER_ID"), err),
 			Flags: discordgo.MessageFlagsEphemeral,
+		},
+	})
+}
+
+// sendEmbed sends an InteractionRespond to the passed in session/interaction
+func sendEmbed(s *discordgo.Session, i *discordgo.InteractionCreate, title string, fields []*discordgo.MessageEmbedField) {
+	s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Embeds: []*discordgo.MessageEmbed{
+				{
+					Title:  title,
+					Color:  3093151, // dark blue
+					Fields: fields,
+				},
+			},
 		},
 	})
 }
