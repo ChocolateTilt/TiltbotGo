@@ -110,7 +110,7 @@ func (t QuoteType) getQuote(id string) (Quote, error) {
 		if time.Since(dbMaxT).Hours() >= 1 {
 			var qType QuoteType = "full"
 			var err error
-			dbMax, err = qType.quoteCount("")
+			dbMax, err = qType.quoteCount(id)
 			if err != nil {
 				return quote, fmt.Errorf("error getting quote count for random quote: %w", err)
 			}
