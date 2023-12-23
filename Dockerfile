@@ -22,6 +22,9 @@ RUN adduser \
     --uid "${UID}" \    
     "${USER}"
 
+# Install CA certificates in Alpine Linux
+RUN apt --no-cache add ca-certificates && update-ca-certificates
+
 COPY . .
 RUN go mod download 
 RUN GOOS=linux GOARCH=arm go build -o ./app/bot .
@@ -43,10 +46,13 @@ COPY --from=build /etc/group /etc/group
 # Copy Timezone information
 COPY --from=build /usr/share/zoneinfo /usr/share/zoneinfo
 
+# Copy the CA certificates from the build stage
+COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+
 # Copy the binary
 COPY --from=build /root/app .
 
-# Use unprivledged user
+# Use unprivileged user
 USER appuser:appuser
 
 CMD [ "./bot" ]
