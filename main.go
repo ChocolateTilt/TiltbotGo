@@ -57,6 +57,7 @@ func main() {
 	defer session.Close()
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+	log.Println("Running version ", os.Getenv("VERSION"))
 	log.Println("Stop the container or press Ctrl+C to exit")
 	<-stop
 	log.Printf("Gracefully disconnected: %v#%v", session.State.User.Username, session.State.User.Discriminator)
