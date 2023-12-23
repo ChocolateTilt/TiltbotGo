@@ -23,7 +23,7 @@ RUN adduser \
     "${USER}"
 
 # Install CA certificates in Alpine Linux
-RUN apt --no-cache add ca-certificates && update-ca-certificates
+RUN apk --no-cache add ca-certificates && update-ca-certificates
 
 COPY . .
 RUN go mod download 
