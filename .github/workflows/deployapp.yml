@@ -22,6 +22,14 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Set up Docker Buildx cache
+        uses: actions/cache@v3
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
       - name: Build Image and Push to GHCR
         uses: docker/build-push-action@v5
         with:
@@ -29,3 +37,5 @@ jobs:
           platforms: linux/arm/v7
           tags: ghcr.io/chocolatetilt/tiltbotgo:latest
           push: true
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
