@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"math/rand"
 	"os"
 	"strings"
@@ -28,7 +29,6 @@ type QuoteType string
 
 var (
 	collection *mongo.Collection
-	ctx        = context.Background()
 	rng        = rand.New(rand.NewSource(time.Now().UnixNano()))
 	dbMax      int
 	dbMaxT     time.Time
@@ -43,7 +43,7 @@ func connectMongo() error {
 		return fmt.Errorf("mongo URI and collection name not found in .env")
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	serverAPI := options.ServerAPI(options.ServerAPIVersion1)
@@ -60,8 +60,10 @@ func connectMongo() error {
 }
 
 // createQuote inserts a new quote into the MongoDB collection
-func createQuote(quote Quote) error {
-	// TODO: Figure out a way to cache if a quote was added within the cached dbCountMax time. If yes, clear dbCountMax
+func createQuote(quote Quote, ctx context.Context) error {
+	// Zero out cached last full scan time
+	dbMaxT = time.Time{}
+
 	_, err := collection.InsertOne(ctx, quote)
 	if err != nil {
 		return fmt.Errorf("problem while creating a quote in the collection: %v", err)
@@ -72,17 +74,22 @@ func createQuote(quote Quote) error {
 // Estimate number of documents in the collection. id is only used for "user" type searches.
 //
 // Accepts: "full", and "user"
-func (t QuoteType) quoteCount(id string) (int, error) {
+func (t QuoteType) quoteCount(id string, ctx context.Context) (int, error) {
 	var count int64
 	var err error
 
 	switch t {
 	case "full":
-		if time.Since(dbMaxT).Hours() >= 1 {
+		if time.Since(dbMaxT).Hours() >= 1 || dbMaxT.IsZero() {
 			count, err = collection.EstimatedDocumentCount(ctx)
 			if err != nil {
 				return 0, err
 			}
+			dbMax = int(count)
+			dbMaxT = time.Now()
+			log.Println("Cached full quote count at", dbMaxT)
+		} else {
+			return dbMax, nil
 		}
 
 	case "user":
@@ -98,7 +105,7 @@ func (t QuoteType) quoteCount(id string) (int, error) {
 // getQuote returns a quote from the collection based on the type (t) of search. id is only used for "user" type searches.
 //
 // Types: "rand", "latest", and "user"
-func (t QuoteType) getQuote(id string) (Quote, error) {
+func (t QuoteType) getQuote(id string, ctx context.Context) (Quote, error) {
 	var (
 		min         = 1
 		emptyFilter = bson.D{}
@@ -107,16 +114,14 @@ func (t QuoteType) getQuote(id string) (Quote, error) {
 
 	switch t {
 	case "rand":
-		if time.Since(dbMaxT).Hours() >= 1 {
-			var qType QuoteType = "full"
-			var err error
-			dbMax, err = qType.quoteCount(id)
-			if err != nil {
-				return quote, fmt.Errorf("error getting quote count for random quote: %w", err)
-			}
-			// Update the timestamp
-			dbMaxT = time.Now()
+		var qType QuoteType = "full"
+		var err error
+		dbMax, err = qType.quoteCount(id, ctx)
+		if err != nil {
+			return quote, fmt.Errorf("error getting quote count for random quote: %w", err)
 		}
+		// Update the timestamp
+		dbMaxT = time.Now()
 
 		randomSkip := rng.Intn(dbMax + min - 1)
 		opts := options.FindOne().SetSkip(int64(randomSkip))
@@ -145,7 +150,7 @@ func (t QuoteType) getQuote(id string) (Quote, error) {
 		}
 
 	case "user":
-		userDBMax, err := t.quoteCount(id)
+		userDBMax, err := t.quoteCount(id, ctx)
 		if err != nil {
 			return quote, fmt.Errorf("error getting quote count for user quote: %w", err)
 		}
@@ -173,7 +178,7 @@ func (t QuoteType) getQuote(id string) (Quote, error) {
 }
 
 // getLeaderboard returns the top 10 quotees from the collection
-func getLeaderboard() (string, error) {
+func getLeaderboard(ctx context.Context) (string, error) {
 	var leaderboard []string
 
 	pipeline := mongo.Pipeline{
