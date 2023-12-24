@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -48,17 +49,26 @@ func sendEmbed(s *discordgo.Session, i *discordgo.InteractionCreate, title strin
 	})
 }
 
-func handleQuoteSearch(s *discordgo.Session, i *discordgo.InteractionCreate, options []*discordgo.ApplicationCommandInteractionDataOption, searchType QuoteType) {
+// handleQuoteSearch is a helper function that gets a quote based on t
+func handleQuoteSearch(s *discordgo.Session, i *discordgo.InteractionCreate, opts []*discordgo.ApplicationCommandInteractionDataOption, t QuoteType) Quote {
 	var quoteeID string
-	if searchType == QuoteTypeUser {
-		quotee := options[0].Options[0].UserValue(s)
+	if t == QuoteTypeUser {
+		quotee := opts[0].Options[0].UserValue(s)
 		quoteeID = fmt.Sprintf("<@%v>", quotee.ID)
 	}
-	quote, err := searchType.getQuote(quoteeID)
+
+	ctx, cancel := ctxWithTimeout()
+	defer cancel()
+
+	quote, err := t.getQuote(quoteeID, ctx)
 	if err != nil {
 		sendErr(s, i, err)
 		log.Printf("Error getting quote: %v", err) // Log the error
 	}
-	// TODO: Change embed title dynamically (ex: "Random <name> quote")
-	sendEmbed(s, i, "Random Quote", quoteFields(quote))
+	return quote
+}
+
+// ctxWithTimeout creates a context with a ten second timeout
+func ctxWithTimeout() (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), 10*time.Second)
 }
