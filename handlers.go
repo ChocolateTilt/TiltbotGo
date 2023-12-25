@@ -53,6 +53,7 @@ var quoteHandler = map[string]func(s *discordgo.Session, i *discordgo.Interactio
 			sendErr(s, i, err)
 			return
 		}
+		sendEmbed(s, i, fmt.Sprintf("Added quote for %s", quotee.Username), quoteFields(quoteSave))
 	},
 	"leaderboard": func(s *discordgo.Session, i *discordgo.InteractionCreate, options []*discordgo.ApplicationCommandInteractionDataOption) {
 		ctx, cancel := ctxWithTimeout()
