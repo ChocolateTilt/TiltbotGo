@@ -2,10 +2,13 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"os"
 	"time"
+
+	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/bwmarrin/discordgo"
 )
@@ -52,7 +55,7 @@ func sendEmbed(s *discordgo.Session, i *discordgo.InteractionCreate, title strin
 // handleQuoteSearch is a helper function that gets a quote based on t
 func handleQuoteSearch(s *discordgo.Session, i *discordgo.InteractionCreate, opts []*discordgo.ApplicationCommandInteractionDataOption, t QuoteType) Quote {
 	var quoteeID string
-	if t == QuoteTypeUser {
+	if t == QuoteTypeUser || t == QuoteTypeLatestUser {
 		quotee := opts[0].Options[0].UserValue(s)
 		quoteeID = fmt.Sprintf("<@%v>", quotee.ID)
 	}
@@ -61,9 +64,21 @@ func handleQuoteSearch(s *discordgo.Session, i *discordgo.InteractionCreate, opt
 	defer cancel()
 
 	quote, err := t.getQuote(quoteeID, ctx)
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		sendEmbed(s, i, "No quotes found", []*discordgo.MessageEmbedField{
+			{Name: "Message", Value: fmt.Sprintf("No quotes found for %s", quoteeID)},
+		})
+		return quote
+	}
+
+	if quote.Quote == "" {
+		sendEmbed(s, i, "No quotes found", []*discordgo.MessageEmbedField{
+			{Name: "Message", Value: fmt.Sprintf("No quotes found for %s", quoteeID)},
+		})
+	}
 	if err != nil {
 		sendErr(s, i, err)
-		log.Printf("Error getting quote: %v", err) // Log the error
+		log.Printf("Error getting quote: %v", err)
 	}
 	return quote
 }

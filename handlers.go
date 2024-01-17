@@ -8,9 +8,10 @@ import (
 )
 
 const (
-	QuoteTypeUser   = "user"
-	QuoteTypeLatest = "latest"
-	QuoteTypeRandom = "rand"
+	QuoteTypeUser       = "user"
+	QuoteTypeLatest     = "latest"
+	QuoteTypeLatestUser = "latestUser"
+	QuoteTypeRandom     = "rand"
 )
 
 var quoteHandler = map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate, options []*discordgo.ApplicationCommandInteractionDataOption){
@@ -73,9 +74,15 @@ var quoteHandler = map[string]func(s *discordgo.Session, i *discordgo.Interactio
 		sendEmbed(s, i, fmt.Sprintf("Random Quote from %s", options[0].Options[0].UserValue(s).Username), quoteFields(quote))
 	},
 	"latest": func(s *discordgo.Session, i *discordgo.InteractionCreate, options []*discordgo.ApplicationCommandInteractionDataOption) {
-		quote := handleQuoteSearch(s, i, options, QuoteTypeLatest)
+		var quote Quote
 
+		if len(options[0].Options) == 0 {
+			quote = handleQuoteSearch(s, i, options, QuoteTypeLatest)
+		} else {
+			quote = handleQuoteSearch(s, i, options, QuoteTypeLatestUser)
+		}
 		sendEmbed(s, i, "Latest Quote", quoteFields(quote))
+
 	},
 	"random": func(s *discordgo.Session, i *discordgo.InteractionCreate, options []*discordgo.ApplicationCommandInteractionDataOption) {
 		quote := handleQuoteSearch(s, i, options, QuoteTypeRandom)

@@ -104,7 +104,7 @@ func (t QuoteType) quoteCount(id string, ctx context.Context) (int, error) {
 
 // getQuote returns a quote from the collection based on the type (t) of search. id is only used for "user" type searches.
 //
-// Types: "rand", "latest", and "user"
+// Types: "rand", "latest", "latestUser", and "user"
 func (t QuoteType) getQuote(id string, ctx context.Context) (Quote, error) {
 	var (
 		min         = 1
@@ -147,6 +147,20 @@ func (t QuoteType) getQuote(id string, ctx context.Context) (Quote, error) {
 		bson.Unmarshal(doc, &quote)
 		if err != nil {
 			return quote, fmt.Errorf("error unmarshalling latest quote: %w", err)
+		}
+
+	case "latestUser":
+		opts := options.FindOne().SetSort(bson.D{{Key: "createdAt", Value: -1}})
+		userFilter := bson.D{{Key: "quotee", Value: id}}
+
+		doc, err := collection.FindOne(ctx, userFilter, opts).Raw()
+		if err != nil {
+			return quote, fmt.Errorf("error decoding latest user quote: %w", err)
+		}
+
+		bson.Unmarshal(doc, &quote)
+		if err != nil {
+			return quote, fmt.Errorf("error unmarshalling latest user quote: %w", err)
 		}
 
 	case "user":

@@ -37,8 +37,16 @@ var (
 				},
 				{
 					Name:        "latest",
-					Description: "Get the latest quote from the collection",
+					Description: "Get the most recent quote from the collection",
 					Type:        discordgo.ApplicationCommandOptionSubCommand,
+					Options: []*discordgo.ApplicationCommandOption{
+						{
+							Type:        discordgo.ApplicationCommandOptionUser,
+							Name:        "user",
+							Description: "Get the most recent quote for a specific user",
+							Required:    false,
+						},
+					},
 				},
 				{
 					Name:        "count",
