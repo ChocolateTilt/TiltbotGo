@@ -24,9 +24,6 @@ type Quote struct {
 	Quoter    string             `bson:"quoter"`
 }
 
-// QuoteType is a string type that is used to determine the type of quote search
-type QuoteType string
-
 var (
 	collection *mongo.Collection
 	rng        = rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -74,11 +71,11 @@ func createQuote(quote Quote, ctx context.Context) error {
 // Estimate number of documents in the collection. id is only used for "user" type searches.
 //
 // Accepts: "full", and "user"
-func (t QuoteType) quoteCount(id string, ctx context.Context) (int, error) {
+func quoteCount(id, qType string, ctx context.Context) (int, error) {
 	var count int64
 	var err error
 
-	switch t {
+	switch qType {
 	case "full":
 		if time.Since(dbMaxT).Hours() >= 1 || dbMaxT.IsZero() {
 			count, err = collection.EstimatedDocumentCount(ctx)
@@ -105,18 +102,17 @@ func (t QuoteType) quoteCount(id string, ctx context.Context) (int, error) {
 // getQuote returns a quote from the collection based on the type (t) of search. id is only used for "user" type searches.
 //
 // Types: "rand", "latest", "latestUser", and "user"
-func (t QuoteType) getQuote(id string, ctx context.Context) (Quote, error) {
+func getQuote(id, qType string, ctx context.Context) (Quote, error) {
 	var (
 		min         = 1
 		emptyFilter = bson.D{}
 		quote       Quote
 	)
 
-	switch t {
+	switch qType {
 	case "rand":
-		var qType QuoteType = "full"
 		var err error
-		dbMax, err = qType.quoteCount(id, ctx)
+		dbMax, err := quoteCount(id, "full", ctx)
 		if err != nil {
 			return quote, fmt.Errorf("error getting quote count for random quote: %w", err)
 		}
@@ -164,7 +160,7 @@ func (t QuoteType) getQuote(id string, ctx context.Context) (Quote, error) {
 		}
 
 	case "user":
-		userDBMax, err := t.quoteCount(id, ctx)
+		userDBMax, err := quoteCount(id, "user", ctx)
 		if err != nil {
 			return quote, fmt.Errorf("error getting quote count for user quote: %w", err)
 		}

@@ -53,7 +53,7 @@ func sendEmbed(s *discordgo.Session, i *discordgo.InteractionCreate, title strin
 }
 
 // handleQuoteSearch is a helper function that gets a quote based on t
-func handleQuoteSearch(s *discordgo.Session, i *discordgo.InteractionCreate, opts []*discordgo.ApplicationCommandInteractionDataOption, t QuoteType) Quote {
+func handleQuoteSearch(s *discordgo.Session, i *discordgo.InteractionCreate, opts []*discordgo.ApplicationCommandInteractionDataOption, t string) Quote {
 	var quoteeID string
 	if t == QuoteTypeUser || t == QuoteTypeLatestUser {
 		quotee := opts[0].Options[0].UserValue(s)
@@ -63,7 +63,7 @@ func handleQuoteSearch(s *discordgo.Session, i *discordgo.InteractionCreate, opt
 	ctx, cancel := ctxWithTimeout()
 	defer cancel()
 
-	quote, err := t.getQuote(quoteeID, ctx)
+	quote, err := getQuote(quoteeID, t, ctx)
 	if errors.Is(err, mongo.ErrNoDocuments) {
 		sendEmbed(s, i, "No quotes found", []*discordgo.MessageEmbedField{
 			{Name: "Message", Value: fmt.Sprintf("No quotes found for %s", quoteeID)},

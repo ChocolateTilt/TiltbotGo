@@ -16,11 +16,10 @@ const (
 
 var quoteHandler = map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate, options []*discordgo.ApplicationCommandInteractionDataOption){
 	"count": func(s *discordgo.Session, i *discordgo.InteractionCreate, options []*discordgo.ApplicationCommandInteractionDataOption) {
-		var countType QuoteType = "full"
 		ctx, cancel := ctxWithTimeout()
 		defer cancel()
 
-		count, err := countType.quoteCount("", ctx)
+		count, err := quoteCount("", "full", ctx)
 		if err != nil {
 			sendErr(s, i, err)
 			return
