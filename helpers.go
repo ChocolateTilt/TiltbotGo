@@ -52,6 +52,15 @@ func sendEmbed(s *discordgo.Session, i *discordgo.InteractionCreate, title strin
 	})
 }
 
+func sendMsg(s *discordgo.Session, i *discordgo.InteractionCreate, msg string) {
+	s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Content: msg,
+		},
+	})
+}
+
 // handleQuoteSearch is a helper function that gets a quote based on t
 func handleQuoteSearch(s *discordgo.Session, i *discordgo.InteractionCreate, opts []*discordgo.ApplicationCommandInteractionDataOption, t string) Quote {
 	var quoteeID string
@@ -65,16 +74,8 @@ func handleQuoteSearch(s *discordgo.Session, i *discordgo.InteractionCreate, opt
 
 	quote, err := getQuote(quoteeID, t, ctx)
 	if errors.Is(err, mongo.ErrNoDocuments) {
-		sendEmbed(s, i, "No quotes found", []*discordgo.MessageEmbedField{
-			{Name: "Message", Value: fmt.Sprintf("No quotes found for %s", quoteeID)},
-		})
+		sendMsg(s, i, "No quotes found for that user")
 		return quote
-	}
-
-	if quote.Quote == "" {
-		sendEmbed(s, i, "No quotes found", []*discordgo.MessageEmbedField{
-			{Name: "Message", Value: fmt.Sprintf("No quotes found for %s", quoteeID)},
-		})
 	}
 	if err != nil {
 		sendErr(s, i, err)
