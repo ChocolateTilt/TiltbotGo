@@ -102,16 +102,16 @@ func quoteCount(id, qType string, ctx context.Context) (int, error) {
 // getQuote returns a quote from the collection based on the type (t) of search. id is only used for "user" type searches.
 //
 // Types: "rand", "latest", "latestUser", and "user"
-func getQuote(id, qType string, ctx context.Context) (Quote, error) {
+func getQuote(id, t string, ctx context.Context) (Quote, error) {
 	var (
-		min         = 1
-		emptyFilter = bson.D{}
-		quote       Quote
+		min    = 1
+		quote  Quote
+		filter interface{}
+		opts   *options.FindOneOptions
 	)
 
-	switch qType {
+	switch t {
 	case "rand":
-		var err error
 		dbMax, err := quoteCount(id, "full", ctx)
 		if err != nil {
 			return quote, fmt.Errorf("error getting quote count for random quote: %w", err)
@@ -120,43 +120,12 @@ func getQuote(id, qType string, ctx context.Context) (Quote, error) {
 		dbMaxT = time.Now()
 
 		randomSkip := rng.Intn(dbMax + min - 1)
-		opts := options.FindOne().SetSkip(int64(randomSkip))
+		opts = options.FindOne().SetSkip(int64(randomSkip))
 
-		doc, err := collection.FindOne(ctx, emptyFilter, opts).Raw()
-		if err != nil {
-			return quote, fmt.Errorf("error decoding random quote: %w", err)
-		}
-
-		err = bson.Unmarshal(doc, &quote)
-		if err != nil {
-			return quote, fmt.Errorf("error unmarshalling random quote: %w", err)
-		}
-
-	case "latest":
-		opts := options.FindOne().SetSort(bson.D{{Key: "createdAt", Value: -1}})
-
-		doc, err := collection.FindOne(ctx, emptyFilter, opts).Raw()
-		if err != nil {
-			return quote, fmt.Errorf("error decoding latest quote: %w", err)
-		}
-
-		bson.Unmarshal(doc, &quote)
-		if err != nil {
-			return quote, fmt.Errorf("error unmarshalling latest quote: %w", err)
-		}
-
-	case "latestUser":
-		opts := options.FindOne().SetSort(bson.D{{Key: "createdAt", Value: -1}})
-		userFilter := bson.D{{Key: "quotee", Value: id}}
-
-		doc, err := collection.FindOne(ctx, userFilter, opts).Raw()
-		if err != nil {
-			return quote, fmt.Errorf("error decoding latest user quote: %w", err)
-		}
-
-		bson.Unmarshal(doc, &quote)
-		if err != nil {
-			return quote, fmt.Errorf("error unmarshalling latest user quote: %w", err)
+	case "latest", "latestUser":
+		opts = options.FindOne().SetSort(bson.D{{Key: "createdAt", Value: -1}})
+		if t == "latestUser" {
+			filter = bson.D{{Key: "quotee", Value: id}}
 		}
 
 	case "user":
@@ -166,22 +135,27 @@ func getQuote(id, qType string, ctx context.Context) (Quote, error) {
 		}
 		if userDBMax != 0 {
 			userSkip := rand.Intn(userDBMax - min + 1)
-			userFilter := bson.D{{Key: "quotee", Value: id}}
-			opts := options.FindOne().SetSkip(int64(userSkip))
-
-			doc, err := collection.FindOne(ctx, userFilter, opts).Raw()
-			if err != nil {
-				return quote, fmt.Errorf("error decoding user quote: %w", err)
-			}
-
-			err = bson.Unmarshal(doc, &quote)
-			if err != nil {
-				return quote, fmt.Errorf("error unmarshalling user quote: %w", err)
-			}
-
+			filter = bson.D{{Key: "quotee", Value: id}}
+			opts = options.FindOne().SetSkip(int64(userSkip))
 		}
+
 	default:
 		quote.Quote = ""
+		return quote, fmt.Errorf("invalid quote type: %v", t)
+	}
+
+	if filter == nil {
+		filter = bson.D{}
+	}
+
+	doc, err := collection.FindOne(ctx, filter, opts).Raw()
+	if err != nil {
+		return quote, fmt.Errorf("error decoding quote: %w", err)
+	}
+
+	err = bson.Unmarshal(doc, &quote)
+	if err != nil {
+		return quote, fmt.Errorf("error unmarshalling quote: %w", err)
 	}
 
 	return quote, nil
