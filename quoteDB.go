@@ -24,9 +24,6 @@ type Quote struct {
 	Quoter    string             `bson:"quoter"`
 }
 
-// QuoteType is a string type that is used to determine the type of quote search
-type QuoteType string
-
 var (
 	collection *mongo.Collection
 	rng        = rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -43,7 +40,7 @@ func connectMongo() error {
 		return fmt.Errorf("mongo URI and collection name not found in .env")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := ctxWithTimeout()
 	defer cancel()
 
 	serverAPI := options.ServerAPI(options.ServerAPIVersion1)
@@ -74,11 +71,11 @@ func createQuote(quote Quote, ctx context.Context) error {
 // Estimate number of documents in the collection. id is only used for "user" type searches.
 //
 // Accepts: "full", and "user"
-func (t QuoteType) quoteCount(id string, ctx context.Context) (int, error) {
+func quoteCount(id, qType string, ctx context.Context) (int, error) {
 	var count int64
 	var err error
 
-	switch t {
+	switch qType {
 	case "full":
 		if time.Since(dbMaxT).Hours() >= 1 || dbMaxT.IsZero() {
 			count, err = collection.EstimatedDocumentCount(ctx)
@@ -104,19 +101,18 @@ func (t QuoteType) quoteCount(id string, ctx context.Context) (int, error) {
 
 // getQuote returns a quote from the collection based on the type (t) of search. id is only used for "user" type searches.
 //
-// Types: "rand", "latest", and "user"
-func (t QuoteType) getQuote(id string, ctx context.Context) (Quote, error) {
+// Types: "rand", "latest", "latestUser", and "user"
+func getQuote(id, t string, ctx context.Context) (Quote, error) {
 	var (
-		min         = 1
-		emptyFilter = bson.D{}
-		quote       Quote
+		min    = 1
+		quote  Quote
+		filter interface{}
+		opts   *options.FindOneOptions
 	)
 
 	switch t {
 	case "rand":
-		var qType QuoteType = "full"
-		var err error
-		dbMax, err = qType.quoteCount(id, ctx)
+		dbMax, err := quoteCount(id, "full", ctx)
 		if err != nil {
 			return quote, fmt.Errorf("error getting quote count for random quote: %w", err)
 		}
@@ -124,54 +120,42 @@ func (t QuoteType) getQuote(id string, ctx context.Context) (Quote, error) {
 		dbMaxT = time.Now()
 
 		randomSkip := rng.Intn(dbMax + min - 1)
-		opts := options.FindOne().SetSkip(int64(randomSkip))
+		opts = options.FindOne().SetSkip(int64(randomSkip))
 
-		doc, err := collection.FindOne(ctx, emptyFilter, opts).Raw()
-		if err != nil {
-			return quote, fmt.Errorf("error decoding random quote: %w", err)
-		}
-
-		err = bson.Unmarshal(doc, &quote)
-		if err != nil {
-			return quote, fmt.Errorf("error unmarshalling random quote: %w", err)
-		}
-
-	case "latest":
-		opts := options.FindOne().SetSort(bson.D{{Key: "createdAt", Value: -1}})
-
-		doc, err := collection.FindOne(ctx, emptyFilter, opts).Raw()
-		if err != nil {
-			return quote, fmt.Errorf("error decoding latest quote: %w", err)
-		}
-
-		bson.Unmarshal(doc, &quote)
-		if err != nil {
-			return quote, fmt.Errorf("error unmarshalling latest quote: %w", err)
+	case "latest", "latestUser":
+		opts = options.FindOne().SetSort(bson.D{{Key: "createdAt", Value: -1}})
+		if t == "latestUser" {
+			filter = bson.D{{Key: "quotee", Value: id}}
 		}
 
 	case "user":
-		userDBMax, err := t.quoteCount(id, ctx)
+		userDBMax, err := quoteCount(id, "user", ctx)
 		if err != nil {
 			return quote, fmt.Errorf("error getting quote count for user quote: %w", err)
 		}
 		if userDBMax != 0 {
 			userSkip := rand.Intn(userDBMax - min + 1)
-			userFilter := bson.D{{Key: "quotee", Value: id}}
-			opts := options.FindOne().SetSkip(int64(userSkip))
-
-			doc, err := collection.FindOne(ctx, userFilter, opts).Raw()
-			if err != nil {
-				return quote, fmt.Errorf("error decoding user quote: %w", err)
-			}
-
-			err = bson.Unmarshal(doc, &quote)
-			if err != nil {
-				return quote, fmt.Errorf("error unmarshalling user quote: %w", err)
-			}
-
+			filter = bson.D{{Key: "quotee", Value: id}}
+			opts = options.FindOne().SetSkip(int64(userSkip))
 		}
+
 	default:
 		quote.Quote = ""
+		return quote, fmt.Errorf("invalid quote type: %v", t)
+	}
+
+	if filter == nil {
+		filter = bson.D{}
+	}
+
+	doc, err := collection.FindOne(ctx, filter, opts).Raw()
+	if err != nil {
+		return quote, fmt.Errorf("error decoding quote: %w", err)
+	}
+
+	err = bson.Unmarshal(doc, &quote)
+	if err != nil {
+		return quote, fmt.Errorf("error unmarshalling quote: %w", err)
 	}
 
 	return quote, nil

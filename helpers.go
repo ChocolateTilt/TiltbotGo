@@ -2,10 +2,13 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"os"
 	"time"
+
+	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/bwmarrin/discordgo"
 )
@@ -49,10 +52,19 @@ func sendEmbed(s *discordgo.Session, i *discordgo.InteractionCreate, title strin
 	})
 }
 
+func sendMsg(s *discordgo.Session, i *discordgo.InteractionCreate, msg string) {
+	s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Content: msg,
+		},
+	})
+}
+
 // handleQuoteSearch is a helper function that gets a quote based on t
-func handleQuoteSearch(s *discordgo.Session, i *discordgo.InteractionCreate, opts []*discordgo.ApplicationCommandInteractionDataOption, t QuoteType) Quote {
+func handleQuoteSearch(s *discordgo.Session, i *discordgo.InteractionCreate, opts []*discordgo.ApplicationCommandInteractionDataOption, t string) Quote {
 	var quoteeID string
-	if t == QuoteTypeUser {
+	if t == QuoteTypeUser || t == QuoteTypeLatestUser {
 		quotee := opts[0].Options[0].UserValue(s)
 		quoteeID = fmt.Sprintf("<@%v>", quotee.ID)
 	}
@@ -60,10 +72,14 @@ func handleQuoteSearch(s *discordgo.Session, i *discordgo.InteractionCreate, opt
 	ctx, cancel := ctxWithTimeout()
 	defer cancel()
 
-	quote, err := t.getQuote(quoteeID, ctx)
+	quote, err := getQuote(quoteeID, t, ctx)
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		sendMsg(s, i, "No quotes found for that user")
+		return quote
+	}
 	if err != nil {
 		sendErr(s, i, err)
-		log.Printf("Error getting quote: %v", err) // Log the error
+		log.Printf("Error getting quote: %v", err)
 	}
 	return quote
 }
