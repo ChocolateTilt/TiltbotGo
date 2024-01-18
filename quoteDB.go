@@ -40,7 +40,7 @@ func connectMongo() error {
 		return fmt.Errorf("mongo URI and collection name not found in .env")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := ctxWithTimeout()
 	defer cancel()
 
 	serverAPI := options.ServerAPI(options.ServerAPIVersion1)
