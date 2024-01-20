@@ -22,18 +22,26 @@ func setCommands(s *discordgo.Session) error {
 	return nil
 }
 
+var handlerCtx *HandlerConext
+
 func main() {
 	if err := godotenv.Load(); err != nil {
 		log.Fatalf("Error loading .env file: %v", err)
 	}
 
-	if err := connectSQLite(); err != nil {
-		log.Fatalln(err)
+	db, err := newSQLConn()
+	if err != nil {
+		log.Fatalf("Cannot connect to the database: %v", err)
 	}
 
 	session, err := discordgo.New("Bot " + os.Getenv("DISCORD_TOKEN"))
 	if err != nil {
 		log.Fatalf("Cannot create a Discord session: %v", err)
+	}
+
+	handlerCtx = &HandlerConext{
+		Session: session,
+		DB:      db,
 	}
 
 	session.AddHandler(func(s *discordgo.Session, r *discordgo.Ready) {
@@ -50,7 +58,7 @@ func main() {
 
 	session.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		if h, ok := commandHandlers[i.ApplicationCommandData().Name]; ok {
-			h(s, i)
+			h(handlerCtx, i)
 		}
 	})
 
