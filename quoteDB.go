@@ -26,6 +26,7 @@ var (
 	dbName = os.Getenv("SQLITE_TABLE_NAME")
 )
 
+// connectSQLite opens a connection to the SQLite database
 func connectSQLite() error {
 	sqliteFile := os.Getenv("SQLITE_DB")
 
@@ -42,6 +43,7 @@ func connectSQLite() error {
 	return nil
 }
 
+// createQuote creates a quote in the database
 func createQuote(ctx context.Context, quote Quote) error {
 	// reset the cache timer
 	dbMaxT = time.Time{}
@@ -54,6 +56,7 @@ func createQuote(ctx context.Context, quote Quote) error {
 	return nil
 }
 
+// getRandQuote gets a quote from the database
 func getRandQuote(ctx context.Context) (Quote, error) {
 	var quote Quote
 	query := fmt.Sprintf(`SELECT quote,quotee,quoter,createdAt FROM %s ORDER BY RANDOM() LIMIT 1`, dbName)
@@ -64,6 +67,7 @@ func getRandQuote(ctx context.Context) (Quote, error) {
 	return quote, nil
 }
 
+// getQuote gets a quote from the database for a specific user
 func getRandUserQuote(ctx context.Context, quotee string) (Quote, error) {
 	var quote Quote
 	query := fmt.Sprintf(`SELECT quote,quotee,quoter,createdAt FROM %s WHERE quotee = ? ORDER BY RANDOM() LIMIT 1`, dbName)
@@ -74,9 +78,10 @@ func getRandUserQuote(ctx context.Context, quotee string) (Quote, error) {
 	return quote, nil
 }
 
+// getLatestUserQuote gets the latest quote from the database for a specific user
 func getLatestUserQuote(ctx context.Context, quotee string) (Quote, error) {
 	var quote Quote
-	query := fmt.Sprintf(`SELECT quote,quotee,quoter,createdAt FROM %s WHERE quotee = ? ORDER BY createdAt DESC LIMIT 1`, dbName)
+	query := fmt.Sprintf(`SELECT quote,quotee,quoter,createdAt FROM %s WHERE quotee = ? ORDER BY id DESC LIMIT 1`, dbName)
 	err := db.QueryRowContext(ctx, query, quotee).Scan(&quote.Quote, &quote.Quotee, &quote.Quoter, &quote.CreatedAt)
 	if err != nil {
 		return quote, fmt.Errorf("error getting latest quote: %w", err)
@@ -84,6 +89,7 @@ func getLatestUserQuote(ctx context.Context, quotee string) (Quote, error) {
 	return quote, nil
 }
 
+// getLatestQuote gets the latest quote from the database
 func getLatestQuote(ctx context.Context) (Quote, error) {
 	var quote Quote
 	query := fmt.Sprintf(`SELECT quote,quotee,quoter,createdAt FROM %s ORDER BY id DESC LIMIT 1`, dbName)
@@ -120,7 +126,13 @@ func getLatestQuote(ctx context.Context) (Quote, error) {
 // 	return leaderboard, nil
 // }
 
+// quoteCount gets the number of quotes in the database. It caches the max count for one hour.
 func quoteCount(ctx context.Context) (int, error) {
+	// if the cache is less than an hour old, return the cached value
+	if time.Since(dbMaxT) < time.Hour {
+		return dbMax, nil
+	}
+
 	var count int
 	query := fmt.Sprintf(`SELECT COUNT(*) FROM %s`, dbName)
 	err := db.QueryRowContext(ctx, query).Scan(&count)
