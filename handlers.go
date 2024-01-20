@@ -54,16 +54,16 @@ var quoteHandler = map[string]func(hctx *HandlerConext, i *discordgo.Interaction
 		sendEmbed(handlerCtx.Session, i, fmt.Sprintf("Added quote for %s", quotee.Username), quoteFields(quoteSave))
 	},
 	"leaderboard": func(hctx *HandlerConext, i *discordgo.InteractionCreate, options []*discordgo.ApplicationCommandInteractionDataOption) {
-		// ctx, cancel := ctxWithTimeout(10)
-		// defer cancel()
+		ctx, cancel := ctxWithTimeout(10)
+		defer cancel()
 
-		// leaderboard, err := getLeaderboard(ctx)
-		// if err != nil {
-		// 	sendErr(s, i, err)
-		// }
-		// sendEmbed(s, i, "Quote Leaderboard", []*discordgo.MessageEmbedField{
-		// 	{Name: "All-time", Value: leaderboard},
-		// })
+		leaderboard, err := hctx.DB.getLeaderboard(ctx)
+		if err != nil {
+			sendErr(handlerCtx.Session, i, err)
+		}
+		sendEmbed(handlerCtx.Session, i, "Quote Leaderboard", []*discordgo.MessageEmbedField{
+			{Name: "All-time", Value: leaderboard},
+		})
 	},
 	"user": func(hctx *HandlerConext, i *discordgo.InteractionCreate, options []*discordgo.ApplicationCommandInteractionDataOption) {
 		ctx, cancel := ctxWithTimeout(10)
@@ -84,18 +84,17 @@ var quoteHandler = map[string]func(hctx *HandlerConext, i *discordgo.Interaction
 		defer cancel()
 
 		// if the user is specified, get the latest quote for that user
-		if len(options[0].Options) == 0 {
+		if len(options[0].Options) != 0 {
 			quotee := options[0].Options[0].UserValue(hctx.Session)
-			quoteeID := fmt.Sprintf("<@%v>", quotee.ID)
 
-			quote, err = hctx.DB.getLatestUserQuote(ctx, quoteeID)
+			quote, err = hctx.DB.getLatestUserQuote(ctx, quotee.ID)
 			if err == sql.ErrNoRows {
 				sendMsg(hctx.Session, i, fmt.Sprintf("No quotes found for %s", quotee.Username))
 				return
 			}
 			if err != nil {
 				sendErr(hctx.Session, i, err)
-				log.Printf("Error getting latest quote: %v", err)
+				log.Printf("Error getting latest user quote: %v", err)
 				return
 			}
 		} else {

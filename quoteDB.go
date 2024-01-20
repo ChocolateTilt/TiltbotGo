@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	_ "github.com/ncruces/go-sqlite3/driver"
@@ -81,8 +82,9 @@ func (db *SQLConn) getRandQuote(ctx context.Context) (Quote, error) {
 // getQuote gets a quote from the database for a specific user
 func (db *SQLConn) getRandUserQuote(ctx context.Context, quotee string) (Quote, error) {
 	var quote Quote
+	id := fmt.Sprintf("<@%s>", quotee)
 	query := fmt.Sprintf(`SELECT quote,quotee,quoter,createdAt FROM %s WHERE quotee = ? ORDER BY RANDOM() LIMIT 1`, db.table)
-	err := db.conn.QueryRowContext(ctx, query, quotee).Scan(&quote.Quote, &quote.Quotee, &quote.Quoter, &quote.CreatedAt)
+	err := db.conn.QueryRowContext(ctx, query, id).Scan(&quote.Quote, &quote.Quotee, &quote.Quoter, &quote.CreatedAt)
 	if err != nil {
 		return quote, err
 	}
@@ -94,7 +96,6 @@ func (db *SQLConn) getLatestUserQuote(ctx context.Context, quotee string) (Quote
 	var quote Quote
 	query := fmt.Sprintf(`SELECT quote,quotee,quoter,createdAt FROM %s WHERE quotee = ? ORDER BY id DESC LIMIT 1`, db.table)
 	err := db.conn.QueryRowContext(ctx, query, quotee).Scan(&quote.Quote, &quote.Quotee, &quote.Quoter, &quote.CreatedAt)
-	log.Printf("Table: %s", db.table)
 	if err != nil {
 		return quote, err
 	}
@@ -112,30 +113,36 @@ func (db *SQLConn) getLatestQuote(ctx context.Context) (Quote, error) {
 	return quote, nil
 }
 
-func (db *SQLConn) getLeaderboard(ctx context.Context) ([]string, error) {
+func (db *SQLConn) getLeaderboard(ctx context.Context) (string, error) {
 	var leaderboard []string
+	var cleanLB string
+
 	query := fmt.Sprintf(`SELECT quotee, COUNT(*) as count FROM %s GROUP BY quotee ORDER BY count DESC LIMIT 10`, db.table)
 	rows, err := db.conn.QueryContext(ctx, query)
 	if err != nil {
-		return nil, fmt.Errorf("error getting leaderboard: %w", err)
+		return cleanLB, fmt.Errorf("error getting leaderboard: %w", err)
 	}
 	defer rows.Close()
 
+	position := 0
 	for rows.Next() {
 		var quotee string
 		var count int
+		position++
 		err := rows.Scan(&quotee, &count)
 		if err != nil {
-			return nil, fmt.Errorf("error scanning leaderboard row: %w", err)
+			return cleanLB, fmt.Errorf("error scanning leaderboard row: %w", err)
 		}
-		leaderboard = append(leaderboard, fmt.Sprintf("%s: %d", quotee, count))
+		leaderboard = append(leaderboard, fmt.Sprintf("`%d:` %s: %d", position, quotee, count))
 	}
 
 	if err = rows.Err(); err != nil {
-		return nil, fmt.Errorf("error iterating over leaderboard rows: %w", err)
+		return cleanLB, fmt.Errorf("error iterating over leaderboard rows: %w", err)
 	}
 
-	return leaderboard, nil
+	cleanLB = strings.Join(leaderboard, "\n")
+
+	return cleanLB, nil
 }
 
 // quoteCount gets the number of quotes in the database. It caches the max count for one hour.
