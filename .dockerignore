@@ -1,5 +1,14 @@
+# git files
 .github
 .gitattributes
 .gitignore
+
+# environment files
 .env
 .env.example
+
+# development files
+*.db
+*.txt
+*.csv
+*.sql

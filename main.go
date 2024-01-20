@@ -27,7 +27,7 @@ func main() {
 		log.Fatalf("Error loading .env file: %v", err)
 	}
 
-	if err := connectMongo(); err != nil {
+	if err := connectSQLite(); err != nil {
 		log.Fatalln(err)
 	}
 
