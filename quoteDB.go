@@ -94,8 +94,9 @@ func (db *SQLConn) getRandUserQuote(ctx context.Context, quotee string) (Quote, 
 // getLatestUserQuote gets the latest quote from the database for a specific user
 func (db *SQLConn) getLatestUserQuote(ctx context.Context, quotee string) (Quote, error) {
 	var quote Quote
+	id := fmt.Sprintf("<@%s>", quotee)
 	query := fmt.Sprintf(`SELECT quote,quotee,quoter,createdAt FROM %s WHERE quotee = ? ORDER BY id DESC LIMIT 1`, db.table)
-	err := db.conn.QueryRowContext(ctx, query, quotee).Scan(&quote.Quote, &quote.Quotee, &quote.Quoter, &quote.CreatedAt)
+	err := db.conn.QueryRowContext(ctx, query, id).Scan(&quote.Quote, &quote.Quotee, &quote.Quoter, &quote.CreatedAt)
 	if err != nil {
 		return quote, err
 	}
