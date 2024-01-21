@@ -26,8 +26,8 @@ RUN adduser \
 RUN apk --no-cache add ca-certificates && update-ca-certificates
 
 COPY . .
-RUN go mod download 
-RUN GOOS=linux GOARCH=arm go build -o ./app/bot .
+RUN go mod download && \
+    GOOS=linux GOARCH=arm go build -o ./app/bot .
 
 ############################
 # STEP 2 build final image
@@ -37,7 +37,7 @@ FROM scratch
 
 ENV TZ=America/Detroit
 
-WORKDIR /home/app
+WORKDIR /app
 
 # Copy the user and group from build
 COPY --from=build /etc/passwd /etc/passwd
