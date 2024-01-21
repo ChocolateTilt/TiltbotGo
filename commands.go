@@ -34,6 +34,14 @@ var (
 					Name:        "random",
 					Description: "Get a random quote from the collection",
 					Type:        discordgo.ApplicationCommandOptionSubCommand,
+					Options: []*discordgo.ApplicationCommandOption{
+						{
+							Type:        discordgo.ApplicationCommandOptionUser,
+							Name:        "user",
+							Description: "Get a random quote for a specific user",
+							Required:    false,
+						},
+					},
 				},
 				{
 					Name:        "latest",
@@ -52,19 +60,6 @@ var (
 					Name:        "count",
 					Description: "Get the current number of quotes in the collection",
 					Type:        discordgo.ApplicationCommandOptionSubCommand,
-				},
-				{
-					Name:        "user",
-					Description: "Get a random quote from a specific user",
-					Type:        discordgo.ApplicationCommandOptionSubCommand,
-					Options: []*discordgo.ApplicationCommandOption{
-						{
-							Type:        discordgo.ApplicationCommandOptionUser,
-							Name:        "user",
-							Description: "The user to search for",
-							Required:    true,
-						},
-					},
 				},
 				{
 					Name:        "leaderboard",

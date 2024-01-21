@@ -65,18 +65,6 @@ var quoteHandler = map[string]func(hctx *HandlerConext, i *discordgo.Interaction
 			{Name: "All-time", Value: leaderboard},
 		})
 	},
-	"user": func(hctx *HandlerConext, i *discordgo.InteractionCreate, options []*discordgo.ApplicationCommandInteractionDataOption) {
-		ctx, cancel := ctxWithTimeout(10)
-		defer cancel()
-		quote, err := hctx.DB.getRandUserQuote(ctx, options[0].Options[0].UserValue(hctx.Session).ID)
-		if err != nil {
-			sendErr(hctx.Session, i, err)
-			log.Printf("Error getting random user quote: %v", err)
-			return
-		}
-
-		sendEmbed(hctx.Session, i, fmt.Sprintf("Random Quote from %s", options[0].Options[0].UserValue(hctx.Session).Username), quoteFields(quote))
-	},
 	"latest": func(hctx *HandlerConext, i *discordgo.InteractionCreate, options []*discordgo.ApplicationCommandInteractionDataOption) {
 		var quote Quote
 		var err error
@@ -108,14 +96,32 @@ var quoteHandler = map[string]func(hctx *HandlerConext, i *discordgo.Interaction
 		sendEmbed(hctx.Session, i, "Latest Quote", quoteFields(quote))
 	},
 	"random": func(hctx *HandlerConext, i *discordgo.InteractionCreate, options []*discordgo.ApplicationCommandInteractionDataOption) {
+		var quote Quote
+		var err error
 		ctx, cancel := ctxWithTimeout(10)
 		defer cancel()
 
-		quote, err := hctx.DB.getRandQuote(ctx)
-		if err != nil {
-			sendErr(hctx.Session, i, err)
-			log.Printf("Error getting quote: %v", err)
-			return
+		// if the user is specified, get a random quote for that user
+		if len(options[0].Options) != 0 {
+			quotee := options[0].Options[0].UserValue(hctx.Session)
+
+			quote, err = hctx.DB.getRandUserQuote(ctx, quotee.ID)
+			if err == sql.ErrNoRows {
+				sendMsg(hctx.Session, i, fmt.Sprintf("No quotes found for %s", quotee.Username))
+				return
+			}
+			if err != nil {
+				sendErr(hctx.Session, i, err)
+				log.Printf("Error getting random user quote: %v", err)
+				return
+			}
+		} else {
+			quote, err = hctx.DB.getRandQuote(ctx)
+			if err != nil {
+				sendErr(hctx.Session, i, err)
+				log.Printf("Error getting random quote: %v", err)
+				return
+			}
 		}
 
 		sendEmbed(hctx.Session, i, "Random Quote", quoteFields(quote))
