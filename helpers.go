@@ -2,13 +2,9 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"log"
 	"os"
 	"time"
-
-	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/bwmarrin/discordgo"
 )
@@ -61,30 +57,7 @@ func sendMsg(s *discordgo.Session, i *discordgo.InteractionCreate, msg string) {
 	})
 }
 
-// handleQuoteSearch is a helper function that gets a quote based on t
-func handleQuoteSearch(s *discordgo.Session, i *discordgo.InteractionCreate, opts []*discordgo.ApplicationCommandInteractionDataOption, t string) Quote {
-	var quoteeID string
-	if t == QuoteTypeUser || t == QuoteTypeLatestUser {
-		quotee := opts[0].Options[0].UserValue(s)
-		quoteeID = fmt.Sprintf("<@%v>", quotee.ID)
-	}
-
-	ctx, cancel := ctxWithTimeout()
-	defer cancel()
-
-	quote, err := getQuote(quoteeID, t, ctx)
-	if errors.Is(err, mongo.ErrNoDocuments) {
-		sendMsg(s, i, "No quotes found for that user")
-		return quote
-	}
-	if err != nil {
-		sendErr(s, i, err)
-		log.Printf("Error getting quote: %v", err)
-	}
-	return quote
-}
-
-// ctxWithTimeout creates a context with a ten second timeout
-func ctxWithTimeout() (context.Context, context.CancelFunc) {
-	return context.WithTimeout(context.Background(), 10*time.Second)
+// ctxWithTimeout creates a context with s seconds timeout
+func ctxWithTimeout(s time.Duration) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), s*time.Second)
 }
