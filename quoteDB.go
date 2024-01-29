@@ -115,10 +115,10 @@ func (db *SQLConn) getLatestQuote(ctx context.Context) (Quote, error) {
 	return quote, nil
 }
 
-// searchQuote searches the database for string (s) and returns the top 5 results
+// searchQuote searches the database for string (s) and returns the top 10 results
 func (db *SQLConn) searchQuote(ctx context.Context, s string) ([]Quote, error) {
 	var quotes []Quote
-	query := fmt.Sprintf(`SELECT quote,quotee,quoter,createdAt FROM %s WHERE quote LIKE ? ORDER BY id DESC LIMIT 5`, db.table)
+	query := fmt.Sprintf(`SELECT quote,quotee,quoter,createdAt FROM %s WHERE quote LIKE ? ORDER BY id DESC LIMIT 10`, db.table)
 	rows, err := db.conn.QueryContext(ctx, query, "%"+s+"%")
 	if err != nil {
 		return quotes, err

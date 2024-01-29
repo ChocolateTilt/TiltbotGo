@@ -141,7 +141,7 @@ var quoteHandler = map[string]func(hctx *HandlerConext, i *discordgo.Interaction
 
 		var e []*discordgo.MessageEmbed
 		for x, quote := range quotes {
-			emb := generateEmbed(fmt.Sprintf("Search Resault %d", x), quoteFields(quote))
+			emb := generateEmbed(fmt.Sprintf("Search Result %d", x), quoteFields(quote))
 			e = append(e, emb)
 		}
 		sendEmbed(handlerCtx.Session, i, e)
