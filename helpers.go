@@ -32,18 +32,22 @@ func sendErr(s *discordgo.Session, i *discordgo.InteractionCreate, err error) {
 	})
 }
 
-// sendEmbed sends an InteractionRespond to the passed in session/interaction
-func sendEmbed(s *discordgo.Session, i *discordgo.InteractionCreate, title string, fields []*discordgo.MessageEmbedField) {
+// generateEmbed creates an embed with the passed in title and fields
+func generateEmbed(title string, fields []*discordgo.MessageEmbedField) *discordgo.MessageEmbed {
+	return &discordgo.MessageEmbed{
+		Title:  title,
+		Color:  3093151, // dark blue
+		Fields: fields,
+	}
+}
+
+// sendEmbed sends an embeded interaction response to the user who sent the command
+func sendEmbed(s *discordgo.Session, i *discordgo.InteractionCreate, e []*discordgo.MessageEmbed) {
+	// Respond to the interaction with the first embed
 	s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
-			Embeds: []*discordgo.MessageEmbed{
-				{
-					Title:  title,
-					Color:  3093151, // dark blue
-					Fields: fields,
-				},
-			},
+			Embeds: e,
 		},
 	})
 }

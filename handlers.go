@@ -23,10 +23,7 @@ var quoteHandler = map[string]func(hctx *HandlerConext, i *discordgo.Interaction
 			sendErr(hctx.Session, i, err)
 			return
 		}
-
-		sendEmbed(hctx.Session, i, "Quote Count", []*discordgo.MessageEmbedField{
-			{Name: "Total Quotes", Value: fmt.Sprintf("%d", count)},
-		})
+		sendMsg(hctx.Session, i, fmt.Sprintf("There are %d quotes in the collection", count))
 	},
 	"add": func(hctx *HandlerConext, i *discordgo.InteractionCreate, options []*discordgo.ApplicationCommandInteractionDataOption) {
 		quote := options[0].Options[0].StringValue()
@@ -51,7 +48,8 @@ var quoteHandler = map[string]func(hctx *HandlerConext, i *discordgo.Interaction
 			sendErr(handlerCtx.Session, i, err)
 			return
 		}
-		sendEmbed(handlerCtx.Session, i, fmt.Sprintf("Added quote for %s", quotee.Username), quoteFields(quoteSave))
+		e := generateEmbed("Added Quote", quoteFields(quoteSave))
+		sendEmbed(handlerCtx.Session, i, []*discordgo.MessageEmbed{e})
 	},
 	"leaderboard": func(hctx *HandlerConext, i *discordgo.InteractionCreate, options []*discordgo.ApplicationCommandInteractionDataOption) {
 		ctx, cancel := ctxWithTimeout(10)
@@ -61,9 +59,11 @@ var quoteHandler = map[string]func(hctx *HandlerConext, i *discordgo.Interaction
 		if err != nil {
 			sendErr(handlerCtx.Session, i, err)
 		}
-		sendEmbed(handlerCtx.Session, i, "Quote Leaderboard", []*discordgo.MessageEmbedField{
+
+		e := generateEmbed("Quote Leaderboard", []*discordgo.MessageEmbedField{
 			{Name: "All-time", Value: leaderboard},
 		})
+		sendEmbed(handlerCtx.Session, i, []*discordgo.MessageEmbed{e})
 	},
 	"latest": func(hctx *HandlerConext, i *discordgo.InteractionCreate, options []*discordgo.ApplicationCommandInteractionDataOption) {
 		var quote Quote
@@ -93,7 +93,8 @@ var quoteHandler = map[string]func(hctx *HandlerConext, i *discordgo.Interaction
 				return
 			}
 		}
-		sendEmbed(hctx.Session, i, "Latest Quote", quoteFields(quote))
+		e := generateEmbed("Latest Quote", quoteFields(quote))
+		sendEmbed(handlerCtx.Session, i, []*discordgo.MessageEmbed{e})
 	},
 	"random": func(hctx *HandlerConext, i *discordgo.InteractionCreate, options []*discordgo.ApplicationCommandInteractionDataOption) {
 		var quote Quote
@@ -123,8 +124,27 @@ var quoteHandler = map[string]func(hctx *HandlerConext, i *discordgo.Interaction
 				return
 			}
 		}
+		e := generateEmbed("Random Quote", quoteFields(quote))
+		sendEmbed(handlerCtx.Session, i, []*discordgo.MessageEmbed{e})
+	},
+	"search": func(hctx *HandlerConext, i *discordgo.InteractionCreate, options []*discordgo.ApplicationCommandInteractionDataOption) {
+		ctx, cancel := ctxWithTimeout(10)
+		defer cancel()
 
-		sendEmbed(hctx.Session, i, "Random Quote", quoteFields(quote))
+		searchTerm := options[0].Options[0].StringValue()
+		quotes, err := hctx.DB.searchQuote(ctx, searchTerm)
+		if err != nil {
+			sendErr(hctx.Session, i, err)
+			log.Printf("Error searching quotes: %v", err)
+			return
+		}
+
+		var e []*discordgo.MessageEmbed
+		for x, quote := range quotes {
+			emb := generateEmbed(fmt.Sprintf("Search Resault %d", x), quoteFields(quote))
+			e = append(e, emb)
+		}
+		sendEmbed(handlerCtx.Session, i, e)
 	},
 }
 
