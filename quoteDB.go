@@ -115,6 +115,33 @@ func (db *SQLConn) getLatestQuote(ctx context.Context) (Quote, error) {
 	return quote, nil
 }
 
+// searchQuote searches the database for string (s) and returns the top 5 results
+func (db *SQLConn) searchQuote(ctx context.Context, s string) ([]Quote, error) {
+	var quotes []Quote
+	query := fmt.Sprintf(`SELECT quote,quotee,quoter,createdAt FROM %s WHERE quote LIKE ? ORDER BY id DESC LIMIT 5`, db.table)
+	rows, err := db.conn.QueryContext(ctx, query, "%"+s+"%")
+	if err != nil {
+		return quotes, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var quote Quote
+		err := rows.Scan(&quote.Quote, &quote.Quotee, &quote.Quoter, &quote.CreatedAt)
+		if err != nil {
+			return quotes, err
+		}
+		quotes = append(quotes, quote)
+	}
+
+	if err = rows.Err(); err != nil {
+		return quotes, err
+	}
+
+	return quotes, nil
+}
+
+// getLeaderboard generates a leaderboard of the top 10 quotees
 func (db *SQLConn) getLeaderboard(ctx context.Context) (string, error) {
 	var leaderboard []string
 	var cleanLB string

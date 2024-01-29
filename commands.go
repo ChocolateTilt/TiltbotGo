@@ -66,6 +66,19 @@ var (
 					Description: "Get the leaderboard of users with the most quotes",
 					Type:        discordgo.ApplicationCommandOptionSubCommand,
 				},
+				{
+					Name:        "search",
+					Description: "Search the collection of quotes for a specific string",
+					Type:        discordgo.ApplicationCommandOptionSubCommand,
+					Options: []*discordgo.ApplicationCommandOption{
+						{
+							Type:        discordgo.ApplicationCommandOptionString,
+							Name:        "query",
+							Description: "Get a random quote for a specific user",
+							Required:    true,
+						},
+					},
+				},
 			},
 		},
 	}
