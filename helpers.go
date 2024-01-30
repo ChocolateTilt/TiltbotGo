@@ -4,19 +4,30 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
 )
 
 // quoteFields creates the embed fields for a quote
-func quoteFields(quote Quote) []*discordgo.MessageEmbedField {
-	quoteTime := quote.CreatedAt.Local().Format(time.RFC822)
+func quoteFields(q Quote) []*discordgo.MessageEmbedField {
+	quoteTime := q.CreatedAt.Local().Format(time.RFC822)
 	return []*discordgo.MessageEmbedField{
-		{Name: "Quote", Value: quote.Quote},
-		{Name: "Quotee", Value: quote.Quotee},
-		{Name: "Quoter", Value: quote.Quoter},
+		{Name: "Quote", Value: q.Quote},
+		{Name: "Quotee", Value: q.Quotee},
+		{Name: "Quoter", Value: q.Quoter},
 		{Name: "Created At", Value: quoteTime},
+	}
+}
+
+func incidentFields(i Incident) []*discordgo.MessageEmbedField {
+	incidentTime := i.CreatedAt.Local().Format(time.RFC822)
+	return []*discordgo.MessageEmbedField{
+		{Name: "Name", Value: i.Name},
+		{Name: "Attendees", Value: strings.Join(i.Attendees, ", ")},
+		{Name: "Description", Value: i.Description},
+		{Name: "Created At", Value: incidentTime},
 	}
 }
 
@@ -33,11 +44,11 @@ func sendErr(s *discordgo.Session, i *discordgo.InteractionCreate, err error) {
 }
 
 // generateEmbed creates an embed with the passed in title and fields
-func generateEmbed(title string, fields []*discordgo.MessageEmbedField) *discordgo.MessageEmbed {
+func generateEmbed(t string, f []*discordgo.MessageEmbedField) *discordgo.MessageEmbed {
 	return &discordgo.MessageEmbed{
-		Title:  title,
+		Title:  t,
 		Color:  3093151, // dark blue
-		Fields: fields,
+		Fields: f,
 	}
 }
 
