@@ -81,5 +81,46 @@ var (
 				},
 			},
 		},
+		{
+			Name:        "incident",
+			Description: "Commands for interacting with the collection of incidents",
+			Options: []*discordgo.ApplicationCommandOption{
+				{
+					Name:        "add",
+					Description: "Add an incident to the collection",
+					Type:        discordgo.ApplicationCommandOptionSubCommand,
+					Options: []*discordgo.ApplicationCommandOption{
+						{
+							Type:        discordgo.ApplicationCommandOptionString,
+							Name:        "name",
+							Description: "Name of the incident",
+							Required:    true,
+						},
+						{
+							Type:        discordgo.ApplicationCommandOptionString,
+							Name:        "attendees",
+							Description: "Attendees of the incident",
+							Required:    true,
+						},
+						{
+							Type:        discordgo.ApplicationCommandOptionString,
+							Name:        "description",
+							Description: "Description of the incident",
+							Required:    true,
+						},
+					},
+				},
+				{
+					Name:        "random",
+					Description: "Get a random incident from the collection",
+					Type:        discordgo.ApplicationCommandOptionSubCommand,
+				},
+				{
+					Name:        "count",
+					Description: "Get the current number of incidents in the collection",
+					Type:        discordgo.ApplicationCommandOptionSubCommand,
+				},
+			},
+		},
 	}
 )
