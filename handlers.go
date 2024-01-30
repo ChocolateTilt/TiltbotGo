@@ -4,33 +4,29 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/bwmarrin/discordgo"
 )
 
-type HandlerConext struct {
-	Session *discordgo.Session
-	DB      *SQLConn
-}
-
-var quoteHandler = map[string]func(hctx *HandlerConext, i *discordgo.InteractionCreate, options []*discordgo.ApplicationCommandInteractionDataOption){
-	"count": func(hctx *HandlerConext, i *discordgo.InteractionCreate, options []*discordgo.ApplicationCommandInteractionDataOption) {
+var quoteHandler = map[string]func(c *HandlerConext, i *discordgo.InteractionCreate, options []*discordgo.ApplicationCommandInteractionDataOption){
+	"count": func(c *HandlerConext, i *discordgo.InteractionCreate, options []*discordgo.ApplicationCommandInteractionDataOption) {
 		ctx, cancel := ctxWithTimeout(10)
 		defer cancel()
 
-		count, err := hctx.DB.quoteCount(ctx)
+		count, err := c.DB.countQuotes(ctx)
 		if err != nil {
-			sendErr(hctx.Session, i, err)
+			sendErr(c.Session, i, err)
 			return
 		}
-		sendMsg(hctx.Session, i, fmt.Sprintf("There are %d quotes in the collection", count))
+		sendMsg(c.Session, i, fmt.Sprintf("There are %d quotes in the collection", count))
 	},
-	"add": func(hctx *HandlerConext, i *discordgo.InteractionCreate, options []*discordgo.ApplicationCommandInteractionDataOption) {
+	"add": func(c *HandlerConext, i *discordgo.InteractionCreate, options []*discordgo.ApplicationCommandInteractionDataOption) {
 		quote := options[0].Options[0].StringValue()
-		quotee := options[0].Options[1].UserValue(hctx.Session)
+		quotee := options[0].Options[1].UserValue(c.Session)
 		t, err := discordgo.SnowflakeTimestamp(i.ID)
 		if err != nil {
-			sendErr(hctx.Session, i, err)
+			sendErr(c.Session, i, err)
 			return
 		}
 		quoteSave := Quote{
@@ -43,29 +39,29 @@ var quoteHandler = map[string]func(hctx *HandlerConext, i *discordgo.Interaction
 		ctx, cancel := ctxWithTimeout(10)
 		defer cancel()
 
-		err = hctx.DB.createQuote(ctx, quoteSave)
+		err = c.DB.createQuote(ctx, quoteSave)
 		if err != nil {
-			sendErr(handlerCtx.Session, i, err)
+			sendErr(c.Session, i, err)
 			return
 		}
 		e := generateEmbed("Added Quote", quoteFields(quoteSave))
-		sendEmbed(handlerCtx.Session, i, []*discordgo.MessageEmbed{e})
+		sendEmbed(c.Session, i, []*discordgo.MessageEmbed{e})
 	},
-	"leaderboard": func(hctx *HandlerConext, i *discordgo.InteractionCreate, options []*discordgo.ApplicationCommandInteractionDataOption) {
+	"leaderboard": func(c *HandlerConext, i *discordgo.InteractionCreate, options []*discordgo.ApplicationCommandInteractionDataOption) {
 		ctx, cancel := ctxWithTimeout(10)
 		defer cancel()
 
-		leaderboard, err := hctx.DB.getLeaderboard(ctx)
+		leaderboard, err := c.DB.getLeaderboard(ctx)
 		if err != nil {
-			sendErr(handlerCtx.Session, i, err)
+			sendErr(c.Session, i, err)
 		}
 
 		e := generateEmbed("Quote Leaderboard", []*discordgo.MessageEmbedField{
 			{Name: "All-time", Value: leaderboard},
 		})
-		sendEmbed(handlerCtx.Session, i, []*discordgo.MessageEmbed{e})
+		sendEmbed(c.Session, i, []*discordgo.MessageEmbed{e})
 	},
-	"latest": func(hctx *HandlerConext, i *discordgo.InteractionCreate, options []*discordgo.ApplicationCommandInteractionDataOption) {
+	"latest": func(c *HandlerConext, i *discordgo.InteractionCreate, options []*discordgo.ApplicationCommandInteractionDataOption) {
 		var quote Quote
 		var err error
 		ctx, cancel := ctxWithTimeout(10)
@@ -73,30 +69,30 @@ var quoteHandler = map[string]func(hctx *HandlerConext, i *discordgo.Interaction
 
 		// if the user is specified, get the latest quote for that user
 		if len(options[0].Options) != 0 {
-			quotee := options[0].Options[0].UserValue(hctx.Session)
+			quotee := options[0].Options[0].UserValue(c.Session)
 
-			quote, err = hctx.DB.getLatestUserQuote(ctx, quotee.ID)
+			quote, err = c.DB.getLatestUserQuote(ctx, quotee.ID)
 			if err == sql.ErrNoRows {
-				sendMsg(hctx.Session, i, fmt.Sprintf("No quotes found for %s", quotee.Username))
+				sendMsg(c.Session, i, fmt.Sprintf("No quotes found for %s", quotee.Username))
 				return
 			}
 			if err != nil {
-				sendErr(hctx.Session, i, err)
+				sendErr(c.Session, i, err)
 				log.Printf("Error getting latest user quote: %v", err)
 				return
 			}
 		} else {
-			quote, err = hctx.DB.getLatestQuote(ctx)
+			quote, err = c.DB.getLatestQuote(ctx)
 			if err != nil {
-				sendErr(hctx.Session, i, err)
+				sendErr(c.Session, i, err)
 				log.Printf("Error getting latest quote: %v", err)
 				return
 			}
 		}
 		e := generateEmbed("Latest Quote", quoteFields(quote))
-		sendEmbed(handlerCtx.Session, i, []*discordgo.MessageEmbed{e})
+		sendEmbed(c.Session, i, []*discordgo.MessageEmbed{e})
 	},
-	"random": func(hctx *HandlerConext, i *discordgo.InteractionCreate, options []*discordgo.ApplicationCommandInteractionDataOption) {
+	"random": func(c *HandlerConext, i *discordgo.InteractionCreate, options []*discordgo.ApplicationCommandInteractionDataOption) {
 		var quote Quote
 		var err error
 		ctx, cancel := ctxWithTimeout(10)
@@ -104,37 +100,37 @@ var quoteHandler = map[string]func(hctx *HandlerConext, i *discordgo.Interaction
 
 		// if the user is specified, get a random quote for that user
 		if len(options[0].Options) != 0 {
-			quotee := options[0].Options[0].UserValue(hctx.Session)
+			quotee := options[0].Options[0].UserValue(c.Session)
 
-			quote, err = hctx.DB.getRandUserQuote(ctx, quotee.ID)
+			quote, err = c.DB.getRandUserQuote(ctx, quotee.ID)
 			if err == sql.ErrNoRows {
-				sendMsg(hctx.Session, i, fmt.Sprintf("No quotes found for %s", quotee.Username))
+				sendMsg(c.Session, i, fmt.Sprintf("No quotes found for %s", quotee.Username))
 				return
 			}
 			if err != nil {
-				sendErr(hctx.Session, i, err)
+				sendErr(c.Session, i, err)
 				log.Printf("Error getting random user quote: %v", err)
 				return
 			}
 		} else {
-			quote, err = hctx.DB.getRandQuote(ctx)
+			quote, err = c.DB.getRandQuote(ctx)
 			if err != nil {
-				sendErr(hctx.Session, i, err)
+				sendErr(c.Session, i, err)
 				log.Printf("Error getting random quote: %v", err)
 				return
 			}
 		}
 		e := generateEmbed("Random Quote", quoteFields(quote))
-		sendEmbed(handlerCtx.Session, i, []*discordgo.MessageEmbed{e})
+		sendEmbed(c.Session, i, []*discordgo.MessageEmbed{e})
 	},
-	"search": func(hctx *HandlerConext, i *discordgo.InteractionCreate, options []*discordgo.ApplicationCommandInteractionDataOption) {
+	"search": func(c *HandlerConext, i *discordgo.InteractionCreate, options []*discordgo.ApplicationCommandInteractionDataOption) {
 		ctx, cancel := ctxWithTimeout(10)
 		defer cancel()
 
 		searchTerm := options[0].Options[0].StringValue()
-		quotes, err := hctx.DB.searchQuote(ctx, searchTerm)
+		quotes, err := c.DB.searchQuote(ctx, searchTerm)
 		if err != nil {
-			sendErr(hctx.Session, i, err)
+			sendErr(c.Session, i, err)
 			log.Printf("Error searching quotes: %v", err)
 			return
 		}
@@ -144,22 +140,87 @@ var quoteHandler = map[string]func(hctx *HandlerConext, i *discordgo.Interaction
 			emb := generateEmbed(fmt.Sprintf("Search Result %d", x+1), quoteFields(quote))
 			e = append(e, emb)
 		}
-		sendEmbed(handlerCtx.Session, i, e)
+		sendEmbed(c.Session, i, e)
+	},
+}
+
+var incidentHandler = map[string]func(c *HandlerConext, i *discordgo.InteractionCreate, options []*discordgo.ApplicationCommandInteractionDataOption){
+	"add": func(c *HandlerConext, i *discordgo.InteractionCreate, options []*discordgo.ApplicationCommandInteractionDataOption) {
+		users := strings.Split(options[0].Options[1].StringValue(), ",")
+		var fUser []string
+
+		for _, u := range users {
+			fUser = append(fUser, fmt.Sprintf("<@%s>", u))
+		}
+
+		incident := Incident{
+			Name:        options[0].Options[0].StringValue(),
+			Attendees:   fUser,
+			Description: options[0].Options[3].StringValue(),
+		}
+
+		ctx, cancel := ctxWithTimeout(10)
+		defer cancel()
+
+		err := c.DB.createIncident(ctx, incident)
+		if err != nil {
+			sendErr(c.Session, i, err)
+			return
+		}
+		e := generateEmbed("Added Incident", incidentFields(incident))
+		sendEmbed(c.Session, i, []*discordgo.MessageEmbed{e})
+	},
+
+	"random": func(c *HandlerConext, i *discordgo.InteractionCreate, options []*discordgo.ApplicationCommandInteractionDataOption) {
+		ctx, cancel := ctxWithTimeout(10)
+		defer cancel()
+
+		incident, err := c.DB.getRandIncident(ctx)
+		if err != nil {
+			sendErr(c.Session, i, err)
+			return
+		}
+		e := generateEmbed("Random Incident", incidentFields(incident))
+		sendEmbed(c.Session, i, []*discordgo.MessageEmbed{e})
+	},
+
+	"count": func(c *HandlerConext, i *discordgo.InteractionCreate, options []*discordgo.ApplicationCommandInteractionDataOption) {
+		ctx, cancel := ctxWithTimeout(10)
+		defer cancel()
+
+		count, err := c.DB.countIncidents(ctx)
+		if err != nil {
+			sendErr(c.Session, i, err)
+			return
+		}
+		sendMsg(c.Session, i, fmt.Sprintf("There are %d incidents in the collection", count))
 	},
 }
 
 // commandHandlers is the entrypoint for application commands and maps to commands and subcommands
-var commandHandlers = map[string]func(hctx *HandlerConext, i *discordgo.InteractionCreate){
-	"quote": func(hctx *HandlerConext, i *discordgo.InteractionCreate) {
+var commandHandlers = map[string]func(c *HandlerConext, i *discordgo.InteractionCreate){
+	"quote": func(c *HandlerConext, i *discordgo.InteractionCreate) {
 		options := i.ApplicationCommandData().Options
 		subCommand := options[0].Name
 
 		h, ok := quoteHandler[subCommand]
 		if !ok {
-			sendErr(hctx.Session, i, fmt.Errorf("unknown sub-command: %s", subCommand))
+			sendErr(c.Session, i, fmt.Errorf("unknown sub-command: %s", subCommand))
 			return
 		}
 
-		h(hctx, i, options)
+		h(c, i, options)
+	},
+	"incident": func(c *HandlerConext, i *discordgo.InteractionCreate) {
+		options := i.ApplicationCommandData().Options
+		subCommand := options[0].Name
+
+		h, ok := incidentHandler[subCommand]
+		if !ok {
+			sendErr(c.Session, i, fmt.Errorf("unknown sub-command: %s", subCommand))
+			return
+		}
+
+		h(c, i, options)
 	},
 }
