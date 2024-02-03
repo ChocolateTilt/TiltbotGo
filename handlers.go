@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"strings"
 
 	"github.com/bwmarrin/discordgo"
 )
@@ -146,23 +145,23 @@ var quoteHandler = map[string]func(c *HandlerConext, i *discordgo.InteractionCre
 
 var incidentHandler = map[string]func(c *HandlerConext, i *discordgo.InteractionCreate, options []*discordgo.ApplicationCommandInteractionDataOption){
 	"add": func(c *HandlerConext, i *discordgo.InteractionCreate, options []*discordgo.ApplicationCommandInteractionDataOption) {
-		users := strings.Split(options[0].Options[1].StringValue(), ",")
-		var fUser []string
-
-		for _, u := range users {
-			fUser = append(fUser, fmt.Sprintf("<@%s>", u))
+		t, err := discordgo.SnowflakeTimestamp(i.ID)
+		if err != nil {
+			sendErr(c.Session, i, err)
+			return
 		}
 
 		incident := Incident{
 			Name:        options[0].Options[0].StringValue(),
-			Attendees:   fUser,
-			Description: options[0].Options[3].StringValue(),
+			Attendees:   options[0].Options[1].StringValue(),
+			Description: options[0].Options[2].StringValue(),
+			CreatedAt:   t,
 		}
 
 		ctx, cancel := ctxWithTimeout(10)
 		defer cancel()
 
-		err := c.DB.createIncident(ctx, incident)
+		err = c.DB.createIncident(ctx, incident)
 		if err != nil {
 			sendErr(c.Session, i, err)
 			return
