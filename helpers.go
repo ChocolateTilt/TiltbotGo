@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
@@ -21,11 +20,12 @@ func quoteFields(q Quote) []*discordgo.MessageEmbedField {
 	}
 }
 
+// incidentFields creates the embed fields for an incident
 func incidentFields(i Incident) []*discordgo.MessageEmbedField {
 	incidentTime := i.CreatedAt.Local().Format(time.RFC822)
 	return []*discordgo.MessageEmbedField{
 		{Name: "Name", Value: i.Name},
-		{Name: "Attendees", Value: strings.Join(i.Attendees, ", ")},
+		{Name: "Attendees", Value: i.Attendees},
 		{Name: "Description", Value: i.Description},
 		{Name: "Created At", Value: incidentTime},
 	}
@@ -63,11 +63,12 @@ func sendEmbed(s *discordgo.Session, i *discordgo.InteractionCreate, e []*discor
 	})
 }
 
-func sendMsg(s *discordgo.Session, i *discordgo.InteractionCreate, msg string) {
+// sendMsg sends a message to the user who sent the command
+func sendMsg(s *discordgo.Session, i *discordgo.InteractionCreate, m string) {
 	s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
-			Content: msg,
+			Content: m,
 		},
 	})
 }
