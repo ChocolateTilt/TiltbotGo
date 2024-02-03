@@ -10,24 +10,26 @@ import (
 type Incident struct {
 	CreatedAt   time.Time
 	Name        string
-	Attendees   []string
+	Attendees   string
 	Description string
 }
 
-var (
-	iMax  int       // cached number of incidents in the database
-	iMaxT time.Time // time the max number of incidents was cached
-)
+type IncidentCache struct {
+	Total       int
+	LastUpdated time.Time
+}
+
+var inC IncidentCache
 
 // createIncident creates an incident in the database
 func (db *SQLConn) createIncident(ctx context.Context, i Incident) error {
 	// reset the cache timer
-	iMaxT = time.Time{}
+	inC.LastUpdated = time.Time{}
 
 	log.Printf("Creating incident: %v", i)
 
-	query := fmt.Sprintf(`INSERT INTO %s (name,attendees,description,createdAt) VALUES (?, ?, ?,?)`, db.iTable)
-	_, err := db.conn.ExecContext(ctx, query, i.Name, i.Attendees, i.Description)
+	query := fmt.Sprintf(`INSERT INTO %s (name,attendees,description,createdAt) VALUES (?,?,?,?)`, db.iTable)
+	_, err := db.conn.ExecContext(ctx, query, i.Name, i.Attendees, i.Description, i.CreatedAt)
 	if err != nil {
 		log.Printf("Error creating incident: %v", err)
 		return err
@@ -50,8 +52,8 @@ func (db *SQLConn) getRandIncident(ctx context.Context) (Incident, error) {
 // countIncidents counts the number of incidents in the database
 func (db *SQLConn) countIncidents(ctx context.Context) (int, error) {
 	// if the cache is less than an hour old, return the cached value
-	if time.Since(iMaxT) < time.Hour {
-		return iMax, nil
+	if time.Since(inC.LastUpdated) < time.Hour {
+		return inC.Total, nil
 	}
 
 	var count int
@@ -62,9 +64,9 @@ func (db *SQLConn) countIncidents(ctx context.Context) (int, error) {
 	}
 
 	// cache the max count
-	iMax = count
-	iMaxT = time.Now()
-	log.Printf("Cached %d incidents", count)
+	inC.Total = count
+	inC.LastUpdated = time.Now()
+	log.Printf("Cached %d incidents at %s", count, inC.LastUpdated)
 
 	return count, nil
 }
