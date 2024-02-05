@@ -5,8 +5,8 @@ github.com/gorilla/websocket v1.5.1 h1:gmztn0JnHVt9JZquRuzLw3g4wouNVzKL15iLr/zn/
 github.com/gorilla/websocket v1.5.1/go.mod h1:x3kM2JMyaluk02fnUJpQuwD2dCS5NDG2ZHL0uE0tcaY=
 github.com/joho/godotenv v1.5.1 h1:7eLL/+HRGLY0ldzfGMeQkb7vMd0as4CfYvUVzLqw0N0=
 github.com/joho/godotenv v1.5.1/go.mod h1:f4LDr5Voq0i2e/R5DDNOoa2zzDfwtkZa6DnEwAbqwq4=
-github.com/ncruces/go-sqlite3 v0.12.1 h1:fxNoMQXIiMJ92B4umXyTYbNlk3xyQpZQ2S1Bojz8Z/Y=
-github.com/ncruces/go-sqlite3 v0.12.1/go.mod h1:+8dWcBxb2Yar4EcCwav1a21MpKZbztwOYBLSRYt9bMY=
+github.com/ncruces/go-sqlite3 v0.12.2 h1:NO8lFyFTA6aUtDWviQX2Rzqi1RX3X52peWq/MLgV1Gc=
+github.com/ncruces/go-sqlite3 v0.12.2/go.mod h1:+8dWcBxb2Yar4EcCwav1a21MpKZbztwOYBLSRYt9bMY=
 github.com/ncruces/julianday v1.0.0 h1:fH0OKwa7NWvniGQtxdJRxAgkBMolni2BjDHaWTxqt7M=
 github.com/ncruces/julianday v1.0.0/go.mod h1:Dusn2KvZrrovOMJuOt0TNXL6tB7U2E8kvza5fFc9G7g=
 github.com/tetratelabs/wazero v1.6.0 h1:z0H1iikCdP8t+q341xqepY4EWvHEw8Es7tlqiVzlP3g=
