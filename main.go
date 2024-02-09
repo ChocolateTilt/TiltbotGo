@@ -22,7 +22,7 @@ func setCommands(s *discordgo.Session) error {
 	return nil
 }
 
-var handlerCtx *HandlerConext
+var handlerCtx *HandlerContext
 
 func main() {
 	if err := godotenv.Load(); err != nil {
@@ -39,7 +39,7 @@ func main() {
 		log.Fatalf("Cannot create a Discord session: %v", err)
 	}
 
-	handlerCtx = &HandlerConext{
+	handlerCtx = &HandlerContext{
 		Session: session,
 		DB:      db,
 	}
