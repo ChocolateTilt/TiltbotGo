@@ -10,12 +10,12 @@ import (
 )
 
 // quoteFields creates the embed fields for a quote
-func quoteFields(quote Quote) []*discordgo.MessageEmbedField {
-	quoteTime := quote.CreatedAt.Local().Format(time.RFC822)
+func quoteFields(q Quote) []*discordgo.MessageEmbedField {
+	quoteTime := q.CreatedAt.Local().Format(time.RFC822)
 	return []*discordgo.MessageEmbedField{
-		{Name: "Quote", Value: quote.Quote},
-		{Name: "Quotee", Value: quote.Quotee},
-		{Name: "Quoter", Value: quote.Quoter},
+		{Name: "Quote", Value: q.Quote},
+		{Name: "Quotee", Value: q.Quotee},
+		{Name: "Quoter", Value: q.Quoter},
 		{Name: "Created At", Value: quoteTime},
 	}
 }
@@ -33,11 +33,11 @@ func sendErr(s *discordgo.Session, i *discordgo.InteractionCreate, err error) {
 }
 
 // generateEmbed creates an embed with the passed in title and fields
-func generateEmbed(title string, fields []*discordgo.MessageEmbedField) *discordgo.MessageEmbed {
+func generateEmbed(t string, f []*discordgo.MessageEmbedField) *discordgo.MessageEmbed {
 	return &discordgo.MessageEmbed{
-		Title:  title,
+		Title:  t,
 		Color:  3093151, // dark blue
-		Fields: fields,
+		Fields: f,
 	}
 }
 
@@ -52,11 +52,12 @@ func sendEmbed(s *discordgo.Session, i *discordgo.InteractionCreate, e []*discor
 	})
 }
 
-func sendMsg(s *discordgo.Session, i *discordgo.InteractionCreate, msg string) {
+// sendMsg sends a message to the user who sent the command
+func sendMsg(s *discordgo.Session, i *discordgo.InteractionCreate, m string) {
 	s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
-			Content: msg,
+			Content: m,
 		},
 	})
 }
