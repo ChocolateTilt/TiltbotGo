@@ -7,7 +7,7 @@ toolchain go1.21.5
 require (
 	github.com/bwmarrin/discordgo v0.27.1
 	github.com/joho/godotenv v1.5.1
-	github.com/ncruces/go-sqlite3 v0.12.1
+	github.com/ncruces/go-sqlite3 v0.12.2
 )
 
 require (
