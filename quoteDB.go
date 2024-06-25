@@ -32,9 +32,8 @@ type QuoteCache struct {
 type SQLConn struct {
 	Conn  *sql.DB
 	Table string
+	Cache *QuoteCache
 }
-
-var c QuoteCache
 
 // newSQLConn creates a new connection to the database
 func newSQLConn() (*SQLConn, error) {
@@ -52,13 +51,13 @@ func newSQLConn() (*SQLConn, error) {
 
 	log.Printf("Connected to SQLite database %s", sqliteFile)
 
-	return &SQLConn{Conn: db, Table: table}, nil
+	return &SQLConn{Conn: db, Table: table, Cache: &QuoteCache{}}, nil
 }
 
 // createQuote creates a quote in the database
 func (db *SQLConn) createQuote(ctx context.Context, quote Quote) error {
 	// reset the cache timer
-	c.LastUpdated = time.Time{}
+	db.Cache.LastUpdated = time.Time{}
 
 	log.Printf("Creating quote: %v", quote)
 
@@ -68,6 +67,7 @@ func (db *SQLConn) createQuote(ctx context.Context, quote Quote) error {
 		log.Printf("Error creating quote: %v", err)
 		return err
 	}
+
 	return nil
 }
 
@@ -83,7 +83,7 @@ func (db *SQLConn) getRandQuote(ctx context.Context) (Quote, error) {
 	return quote, nil
 }
 
-// getQuote gets a quote from the database for a specific user
+// getRandUserQuote gets a quote from the database for a specific user
 func (db *SQLConn) getRandUserQuote(ctx context.Context, quotee string) (Quote, error) {
 	var quote Quote
 	id := fmt.Sprintf("<@%s>", quotee)
@@ -92,6 +92,7 @@ func (db *SQLConn) getRandUserQuote(ctx context.Context, quotee string) (Quote, 
 	if err != nil {
 		return quote, err
 	}
+
 	return quote, nil
 }
 
@@ -104,6 +105,7 @@ func (db *SQLConn) getLatestUserQuote(ctx context.Context, quotee string) (Quote
 	if err != nil {
 		return quote, err
 	}
+
 	return quote, nil
 }
 
@@ -115,6 +117,7 @@ func (db *SQLConn) getLatestQuote(ctx context.Context) (Quote, error) {
 	if err != nil {
 		return quote, err
 	}
+
 	return quote, nil
 }
 
@@ -126,6 +129,7 @@ func (db *SQLConn) searchQuote(ctx context.Context, s string) ([]Quote, error) {
 	if err != nil {
 		return quotes, err
 	}
+
 	defer rows.Close()
 
 	for rows.Next() {
@@ -154,6 +158,7 @@ func (db *SQLConn) getLeaderboard(ctx context.Context) (string, error) {
 	if err != nil {
 		return cleanLB, fmt.Errorf("error getting leaderboard: %w", err)
 	}
+
 	defer rows.Close()
 
 	position := 0
@@ -180,9 +185,9 @@ func (db *SQLConn) getLeaderboard(ctx context.Context) (string, error) {
 // quoteCount gets the number of quotes in the database. It caches the max count for one hour.
 func (db *SQLConn) quoteCount(ctx context.Context) (int, error) {
 	// if the cache is less than an hour old, return the cached value
-	if time.Since(c.LastUpdated) < time.Hour {
-		log.Println("Returning cached total quotes: ", c.Total)
-		return c.Total, nil
+	if time.Since(db.Cache.LastUpdated) < time.Hour {
+		log.Println("Returning cached total quotes.")
+		return db.Cache.Total, nil
 	}
 
 	log.Println("Cache is older than an hour. Fetching total quotes from database")
@@ -195,9 +200,9 @@ func (db *SQLConn) quoteCount(ctx context.Context) (int, error) {
 	}
 
 	// cache the max count
-	c.Total = count
-	c.LastUpdated = time.Now()
-	log.Printf("Cached total quotes at %v. Number of quotes: %d", c.LastUpdated, c.Total)
+	db.Cache.Total = count
+	db.Cache.LastUpdated = time.Now()
+	log.Printf("Cached total quotes at %v. Number of quotes: %d", db.Cache.LastUpdated, db.Cache.Total)
 
 	return count, nil
 }
