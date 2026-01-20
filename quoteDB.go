@@ -14,7 +14,7 @@ import (
 	_ "github.com/ncruces/go-sqlite3/embed"
 )
 
-// Quote is the field structure for the "Quote" table
+// Quote is a contruct to hold the shape of quotes in the DB
 type Quote struct {
 	CreatedAt time.Time
 	Quote     string
@@ -22,7 +22,7 @@ type Quote struct {
 	Quoter    string
 }
 
-// QuoteCache is a cache for the total number of quotes and the last time it was updated in the database
+// QuateCache is a construct to hold the most recent quote count
 type QuoteCache struct {
 	Total       int
 	LastUpdated time.Time

@@ -5,7 +5,7 @@ import (
 )
 
 var (
-	// Slice of all application commands
+	// Available application commands
 	commands = []*discordgo.ApplicationCommand{
 		{
 			Name:        "quote",
