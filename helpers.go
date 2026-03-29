@@ -9,6 +9,12 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
+const (
+	dbTimeout   = 10 * time.Second
+	embedColor  = 3093151 // dark blue
+	resultLimit = 10
+)
+
 // quoteFields creates the embed fields for a quote
 func quoteFields(q Quote) []*discordgo.MessageEmbedField {
 	quoteTime := q.CreatedAt.Local().Format(time.RFC822)
@@ -36,7 +42,7 @@ func sendErr(s *discordgo.Session, i *discordgo.InteractionCreate, err error) {
 func generateEmbed(t string, f []*discordgo.MessageEmbedField) *discordgo.MessageEmbed {
 	return &discordgo.MessageEmbed{
 		Title:  t,
-		Color:  3093151, // dark blue
+		Color:  embedColor,
 		Fields: f,
 	}
 }
@@ -62,7 +68,7 @@ func sendMsg(s *discordgo.Session, i *discordgo.InteractionCreate, m string) {
 	})
 }
 
-// ctxWithTimeout creates a context with s seconds timeout
-func ctxWithTimeout(s time.Duration) (context.Context, context.CancelFunc) {
-	return context.WithTimeout(context.Background(), s*time.Second)
+// ctxWithTimeout creates a context with the default database timeout.
+func ctxWithTimeout() (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), dbTimeout)
 }

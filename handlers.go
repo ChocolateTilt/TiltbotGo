@@ -15,7 +15,7 @@ type HandlerContext struct {
 
 var quoteHandler = map[string]func(c *HandlerContext, i *discordgo.InteractionCreate, o []*discordgo.ApplicationCommandInteractionDataOption){
 	"count": func(c *HandlerContext, i *discordgo.InteractionCreate, o []*discordgo.ApplicationCommandInteractionDataOption) {
-		ctx, cancel := ctxWithTimeout(10)
+		ctx, cancel := ctxWithTimeout()
 		defer cancel()
 
 		count, err := c.DB.quoteCount(ctx)
@@ -40,7 +40,7 @@ var quoteHandler = map[string]func(c *HandlerContext, i *discordgo.InteractionCr
 			CreatedAt: t,
 		}
 
-		ctx, cancel := ctxWithTimeout(10)
+		ctx, cancel := ctxWithTimeout()
 		defer cancel()
 
 		err = c.DB.createQuote(ctx, quoteSave)
@@ -52,12 +52,13 @@ var quoteHandler = map[string]func(c *HandlerContext, i *discordgo.InteractionCr
 		sendEmbed(c.Session, i, []*discordgo.MessageEmbed{e})
 	},
 	"leaderboard": func(c *HandlerContext, i *discordgo.InteractionCreate, o []*discordgo.ApplicationCommandInteractionDataOption) {
-		ctx, cancel := ctxWithTimeout(10)
+		ctx, cancel := ctxWithTimeout()
 		defer cancel()
 
 		leaderboard, err := c.DB.getLeaderboard(ctx)
 		if err != nil {
 			sendErr(c.Session, i, err)
+			return
 		}
 
 		e := generateEmbed("Quote Leaderboard", []*discordgo.MessageEmbedField{
@@ -68,7 +69,7 @@ var quoteHandler = map[string]func(c *HandlerContext, i *discordgo.InteractionCr
 	"latest": func(c *HandlerContext, i *discordgo.InteractionCreate, options []*discordgo.ApplicationCommandInteractionDataOption) {
 		var quote Quote
 		var err error
-		ctx, cancel := ctxWithTimeout(10)
+		ctx, cancel := ctxWithTimeout()
 		defer cancel()
 
 		// if the user is specified, get the latest quote for that user
@@ -99,7 +100,7 @@ var quoteHandler = map[string]func(c *HandlerContext, i *discordgo.InteractionCr
 	"random": func(c *HandlerContext, i *discordgo.InteractionCreate, o []*discordgo.ApplicationCommandInteractionDataOption) {
 		var quote Quote
 		var err error
-		ctx, cancel := ctxWithTimeout(10)
+		ctx, cancel := ctxWithTimeout()
 		defer cancel()
 
 		// if the user is specified, get a random quote for that user
@@ -128,7 +129,7 @@ var quoteHandler = map[string]func(c *HandlerContext, i *discordgo.InteractionCr
 		sendEmbed(c.Session, i, []*discordgo.MessageEmbed{e})
 	},
 	"search": func(c *HandlerContext, i *discordgo.InteractionCreate, options []*discordgo.ApplicationCommandInteractionDataOption) {
-		ctx, cancel := ctxWithTimeout(10)
+		ctx, cancel := ctxWithTimeout()
 		defer cancel()
 
 		searchTerm := options[0].Options[0].StringValue()
@@ -136,6 +137,11 @@ var quoteHandler = map[string]func(c *HandlerContext, i *discordgo.InteractionCr
 		if err != nil {
 			sendErr(c.Session, i, err)
 			log.Printf("Error searching quotes: %v", err)
+			return
+		}
+
+		if len(quotes) == 0 {
+			sendMsg(c.Session, i, fmt.Sprintf("No quotes found matching %q", searchTerm))
 			return
 		}
 
