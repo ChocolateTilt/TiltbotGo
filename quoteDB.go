@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	_ "github.com/ncruces/go-sqlite3"
@@ -22,8 +23,9 @@ type Quote struct {
 	Quoter    string
 }
 
-// QuateCache is a construct to hold the most recent quote count
+// QuoteCache is a construct to hold the most recent quote count
 type QuoteCache struct {
+	mu          sync.Mutex
 	Total       int
 	LastUpdated time.Time
 }
@@ -40,10 +42,6 @@ func newSQLConn() (*SQLConn, error) {
 	sqliteFile := os.Getenv("SQLITE_DB")
 	table := os.Getenv("SQLITE_TABLE_NAME")
 
-	if sqliteFile == "" {
-		return nil, fmt.Errorf("sqlite file not found in .env")
-	}
-
 	db, err := sql.Open("sqlite3", sqliteFile)
 	if err != nil {
 		return nil, err
@@ -56,8 +54,10 @@ func newSQLConn() (*SQLConn, error) {
 
 // createQuote creates a quote in the database
 func (db *SQLConn) createQuote(ctx context.Context, quote Quote) error {
-	// reset the cache timer
+	// reset the cache timer so the next count query hits the DB
+	db.Cache.mu.Lock()
 	db.Cache.LastUpdated = time.Time{}
+	db.Cache.mu.Unlock()
 
 	log.Printf("Creating quote: %v", quote)
 
@@ -77,7 +77,7 @@ func (db *SQLConn) getRandQuote(ctx context.Context) (Quote, error) {
 	query := fmt.Sprintf(`SELECT quote,quotee,quoter,createdAt FROM %s ORDER BY RANDOM() LIMIT 1`, db.Table)
 	row := db.Conn.QueryRowContext(ctx, query)
 	if err := row.Scan(&quote.Quote, &quote.Quotee, &quote.Quoter, &quote.CreatedAt); err != nil {
-		return quote, err
+		return quote, fmt.Errorf("getRandQuote: %w", err)
 	}
 
 	return quote, nil
@@ -90,7 +90,7 @@ func (db *SQLConn) getRandUserQuote(ctx context.Context, quotee string) (Quote, 
 	query := fmt.Sprintf(`SELECT quote,quotee,quoter,createdAt FROM %s WHERE quotee = ? ORDER BY RANDOM() LIMIT 1`, db.Table)
 	err := db.Conn.QueryRowContext(ctx, query, id).Scan(&quote.Quote, &quote.Quotee, &quote.Quoter, &quote.CreatedAt)
 	if err != nil {
-		return quote, err
+		return quote, fmt.Errorf("getRandUserQuote: %w", err)
 	}
 
 	return quote, nil
@@ -103,7 +103,7 @@ func (db *SQLConn) getLatestUserQuote(ctx context.Context, quotee string) (Quote
 	query := fmt.Sprintf(`SELECT quote,quotee,quoter,createdAt FROM %s WHERE quotee = ? ORDER BY id DESC LIMIT 1`, db.Table)
 	err := db.Conn.QueryRowContext(ctx, query, id).Scan(&quote.Quote, &quote.Quotee, &quote.Quoter, &quote.CreatedAt)
 	if err != nil {
-		return quote, err
+		return quote, fmt.Errorf("getLatestUserQuote: %w", err)
 	}
 
 	return quote, nil
@@ -115,7 +115,7 @@ func (db *SQLConn) getLatestQuote(ctx context.Context) (Quote, error) {
 	query := fmt.Sprintf(`SELECT quote,quotee,quoter,createdAt FROM %s ORDER BY id DESC LIMIT 1`, db.Table)
 	err := db.Conn.QueryRowContext(ctx, query).Scan(&quote.Quote, &quote.Quotee, &quote.Quoter, &quote.CreatedAt)
 	if err != nil {
-		return quote, err
+		return quote, fmt.Errorf("getLatestQuote: %w", err)
 	}
 
 	return quote, nil
@@ -124,7 +124,7 @@ func (db *SQLConn) getLatestQuote(ctx context.Context) (Quote, error) {
 // searchQuote searches the database for string (s) and returns the top 10 results
 func (db *SQLConn) searchQuote(ctx context.Context, s string) ([]Quote, error) {
 	var quotes []Quote
-	query := fmt.Sprintf(`SELECT quote,quotee,quoter,createdAt FROM %s WHERE quote LIKE ? ORDER BY id DESC LIMIT 10`, db.Table)
+	query := fmt.Sprintf(`SELECT quote,quotee,quoter,createdAt FROM %s WHERE quote LIKE ? ORDER BY id DESC LIMIT %d`, db.Table, resultLimit)
 	rows, err := db.Conn.QueryContext(ctx, query, "%"+s+"%")
 	if err != nil {
 		return quotes, err
@@ -153,7 +153,7 @@ func (db *SQLConn) getLeaderboard(ctx context.Context) (string, error) {
 	var leaderboard []string
 	var cleanLB string
 
-	query := fmt.Sprintf(`SELECT quotee, COUNT(*) as count FROM %s GROUP BY quotee ORDER BY count DESC LIMIT 10`, db.Table)
+	query := fmt.Sprintf(`SELECT quotee, COUNT(*) as count FROM %s GROUP BY quotee ORDER BY count DESC LIMIT %d`, db.Table, resultLimit)
 	rows, err := db.Conn.QueryContext(ctx, query)
 	if err != nil {
 		return cleanLB, fmt.Errorf("error getting leaderboard: %w", err)
@@ -184,10 +184,15 @@ func (db *SQLConn) getLeaderboard(ctx context.Context) (string, error) {
 
 // quoteCount gets the number of quotes in the database. It caches the max count for one hour.
 func (db *SQLConn) quoteCount(ctx context.Context) (int, error) {
+	db.Cache.mu.Lock()
+	cached := time.Since(db.Cache.LastUpdated) < time.Hour
+	cachedTotal := db.Cache.Total
+	db.Cache.mu.Unlock()
+
 	// if the cache is less than an hour old, return the cached value
-	if time.Since(db.Cache.LastUpdated) < time.Hour {
+	if cached {
 		log.Println("Returning cached total quotes.")
-		return db.Cache.Total, nil
+		return cachedTotal, nil
 	}
 
 	log.Println("Cache is older than an hour. Fetching total quotes from database")
@@ -196,13 +201,15 @@ func (db *SQLConn) quoteCount(ctx context.Context) (int, error) {
 	query := fmt.Sprintf(`SELECT COUNT(*) FROM %s`, db.Table)
 	err := db.Conn.QueryRowContext(ctx, query).Scan(&count)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("quoteCount: %w", err)
 	}
 
-	// cache the max count
+	// cache the result
+	db.Cache.mu.Lock()
 	db.Cache.Total = count
 	db.Cache.LastUpdated = time.Now()
-	log.Printf("Cached total quotes at %v. Number of quotes: %d", db.Cache.LastUpdated, db.Cache.Total)
+	db.Cache.mu.Unlock()
+	log.Printf("Cached total quotes at %v. Number of quotes: %d", db.Cache.LastUpdated, count)
 
 	return count, nil
 }

@@ -11,6 +11,16 @@ import (
 	"github.com/joho/godotenv"
 )
 
+// validateEnv checks that all required environment variables are set and fatals if any are missing.
+func validateEnv() {
+	required := []string{"DISCORD_TOKEN", "DISCORD_GUILD", "DISC_BOT_OWNER_ID", "SQLITE_DB", "SQLITE_TABLE_NAME"}
+	for _, key := range required {
+		if os.Getenv(key) == "" {
+			log.Fatalf("Required environment variable %s is not set", key)
+		}
+	}
+}
+
 // setCommands registers commands to Discord in an overwrite fashion.
 func setCommands(s *discordgo.Session) error {
 	log.Println("Adding commands...")
@@ -29,10 +39,13 @@ func main() {
 		log.Fatalf("Error loading .env file: %v", err)
 	}
 
+	validateEnv()
+
 	db, err := newSQLConn()
 	if err != nil {
 		log.Fatalf("Cannot connect to the database: %v", err)
 	}
+	defer db.Conn.Close()
 
 	session, err := discordgo.New("Bot " + os.Getenv("DISCORD_TOKEN"))
 	if err != nil {
